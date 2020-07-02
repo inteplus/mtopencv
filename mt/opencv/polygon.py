@@ -3,6 +3,10 @@
 from . import cv2 as _cv
 import numpy as _np
 
+
+__all__ = ['polygon2mask']
+
+
 def polygon2mask(polygon, padding=0):
     '''Converts the interior of a polygon into an uint8 mask image with padding.
 
