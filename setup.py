@@ -9,7 +9,7 @@ setup(name='mtopencv',
       author=["Minh-Tri Pham"],
       packages=find_namespace_packages(include=['mt.*']),
       install_requires=[
-          'basemt>=0.4.1',
+          'mtbase>=0.4.1',
           # opencv is detected at run-time for flexibility
       ]
       )
