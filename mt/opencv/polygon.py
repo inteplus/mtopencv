@@ -4,7 +4,34 @@ from . import cv2 as _cv
 import numpy as _np
 
 
-__all__ = ['polygon2mask']
+__all__ = ['render_mask', 'polygon2mask', 'morph_open']
+
+
+def render_mask(contours, out_imgres, debug=False):
+    '''Renders a mask array from a list of contours.
+
+    Parameters
+    ----------
+    contours : list
+        a list of numpy arrays, each of which is a list of 2D points, not necessarily in integers
+    out_imgres : list
+        the [width, height] image resolution of the output mask.
+    debug : bool
+        If True, output an uint8 mask image with 0 being negative and 255 being positive. Otherwise, output a float32 mask image with 0.0 being negative and 1.0 being positive.
+    
+    Returns
+    -------
+    numpy.ndarray
+        a 2D array of resolution `out_imgres` representing the mask
+    '''
+    int_contours = [x.astype(_np.int32) for x in contours]
+    if debug:
+        mask = _np.zeros((out_imgres[1], out_imgres[0]), dtype=_np.uint8)
+        _cv.drawContours(mask, int_contours, -1, 255, -1)
+    else:
+        mask = _np.zeros((out_imgres[1], out_imgres[0]), dtype=_np.float32)
+        _cv.drawContours(mask, int_contours, -1, 1.0, -1)
+    return mask
 
 
 def polygon2mask(polygon, padding=0):
