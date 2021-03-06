@@ -3,6 +3,8 @@
 from setuptools import setup, find_namespace_packages
 from mt.opencv.version import version
 
+print("Detected version:", version)
+
 setup(name='mtopencv',
       version=version,
       description="Minh-Tri Pham's extra modules using OpenCV",
