@@ -7,7 +7,7 @@ import numpy as _np
 __all__ = ['render_mask', 'polygon2mask', 'morph_open']
 
 
-def render_mask(contours, out_imgres, debug=False):
+def render_mask(contours, out_imgres, thickness=-1, debug=False):
     '''Renders a mask array from a list of contours.
 
     Parameters
@@ -16,6 +16,8 @@ def render_mask(contours, out_imgres, debug=False):
         a list of numpy arrays, each of which is a list of 2D points, not necessarily in integers
     out_imgres : list
         the [width, height] image resolution of the output mask.
+    thickness : int32
+        negative to fill interior, positive for thickness of the boundary
     debug : bool
         If True, output an uint8 mask image with 0 being negative and 255 being positive. Otherwise, output a float32 mask image with 0.0 being negative and 1.0 being positive.
     
@@ -27,10 +29,10 @@ def render_mask(contours, out_imgres, debug=False):
     int_contours = [x.astype(_np.int32) for x in contours]
     if debug:
         mask = _np.zeros((out_imgres[1], out_imgres[0]), dtype=_np.uint8)
-        _cv.drawContours(mask, int_contours, -1, 255, -1)
+        _cv.drawContours(mask, int_contours, -1, 255, thickness)
     else:
         mask = _np.zeros((out_imgres[1], out_imgres[0]), dtype=_np.float32)
-        _cv.drawContours(mask, int_contours, -1, 1.0, -1)
+        _cv.drawContours(mask, int_contours, -1, 1.0, thickness)
     return mask
 
 
