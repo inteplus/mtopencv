@@ -23,7 +23,7 @@ def warp_image(out_image, in_image, warp_tfm, border_mode='constant'):
         border filling mode. 'constant' means filling zero constant. 'replicate' means replicating last pixels in each dimension. 
     '''    
     inv_tfm = ~(ga.scale2d(out_image.shape[1], out_image.shape[0])*warp_tfm)
-    boderMode = cv.BORDER_CONSTANT if border_mode == 'constant' else cv.BORDER_REPLICATE
+    borderMode = cv.BORDER_CONSTANT if border_mode == 'constant' else cv.BORDER_REPLICATE
     cv.warpAffine(
         in_image,
         inv_tfm.matrix[:2, :],
