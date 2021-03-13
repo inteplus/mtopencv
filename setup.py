@@ -10,6 +10,7 @@ setup(name='mtopencv',
       packages=find_namespace_packages(include=['mt.*']),
       install_requires=[
           'mtbase>=1.1.1',
+          'mtgeo>=0.7.0',
           'opencv-python',
       ]
       )
