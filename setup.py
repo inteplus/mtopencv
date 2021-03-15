@@ -12,5 +12,6 @@ setup(name='mtopencv',
           'mtbase>=1.1.1',
           'mtgeo>=0.7.0',
           'opencv-python',
+          'pyturbojpeg', # for encoding/decoding images
       ]
       )
