@@ -8,6 +8,9 @@ setup(name='mtopencv',
       description="Minh-Tri Pham's extra modules using OpenCV",
       author=["Minh-Tri Pham"],
       packages=find_namespace_packages(include=['mt.*']),
+      scripts=[
+          'scripts/immview.py',
+      ],
       install_requires=[
           'mtbase>=1.1.1',
           'mtgeo>=0.7.0',

@@ -160,7 +160,7 @@ def immsave(image, fp, file_mode=0o664, quality=90):
         fp2 = open(fp, 'wt')
         js.dump(image.to_json(quality=quality), fp2, indent=4)
         if file_mode:  # chmod
-            bp.chmod(df_filepath, file_mode)
+            bp.chmod(fp, file_mode)
     else:
         js.dump(image.to_json(quality=quality), fp, indent=4)
         
