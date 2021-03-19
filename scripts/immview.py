@@ -25,7 +25,7 @@ def get_image(imm):
         image[:h,:w,2] = np.round(imm.image[:,:,0].astype(float)*imm.image[:,:,3].astype(float)/255).astype(np.uint8)
         return image
 
-    if imm.pixel_format == 'rgba':
+    if imm.pixel_format == 'bgra':
         h, w = imm.image.shape[:2]
         image = np.zeros((h*2, w*2, 3), dtype=np.uint8)
         image[h:h*2,:w,0] = imm.image[:,:,0]

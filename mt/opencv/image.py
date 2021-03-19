@@ -85,6 +85,13 @@ class Image(object):
         encoded = base64.b64encode(img_bytes)
         json_obj['image'] = encoded.decode('ascii')
 
+        a_id = self.pixel_format.find('a')
+        if a_id >= 0: # has alpha channel
+            alpha_image = np.ascontiguousarray(self.image[:,:,a_id:a_id+1])
+            img_bytes = _tj.encode(alpha_image, quality=quality, pixel_format=tj.TJPF_GRAY, jpeg_subsample=tj.TJSAMP_GRAY)
+            encoded = base64.b64encode(img_bytes)
+            json_obj['alpha'] = encoded.decode('ascii')
+
         return json_obj
 
     @staticmethod
@@ -108,6 +115,12 @@ class Image(object):
 
         decoded = base64.b64decode(json_obj['image'])
         image = _tj.decode(decoded, pixel_format=PixelFormat[pixel_format][0])
+
+        a_id = pixel_format.find('a')
+        if a_id >= 0: # has alpha channel
+            decoded = base64.b64decode(json_obj['alpha'])
+            alpha_image = _tj.decode(decoded, pixel_format=tj.TJPF_GRAY)
+            image[:,:,a_id:a_id+1] = alpha_image
 
         return Image(image, pixel_format=pixel_format, meta=meta)
 
