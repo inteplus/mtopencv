@@ -7,8 +7,10 @@ import base64
 import turbojpeg as tj
 _tj = tj.TurboJPEG()
 
+import mt.base.path as bp
 
-__all__ = ['PixelFormat', 'Image']
+
+__all__ = ['PixelFormat', 'Image', 'immload', 'immsave']
 
 
 
@@ -108,3 +110,57 @@ class Image(object):
         image = _tj.decode(decoded, pixel_format=PixelFormat[pixel_format][0])
 
         return Image(image, pixel_format=pixel_format, meta=meta)
+
+
+def immload(fp):
+    '''Loads an image with metadata.
+
+    Parameters
+    ----------
+    fp : object
+        string representing a local filepath or an open readable file handle
+
+    Returns
+    -------
+    Image
+        the loaded image with metadata
+
+    Raises
+    ------
+    OSError
+        if an error occured while loading
+    '''
+
+    if isinstance(fp, str):
+        fp = open(fp, 'rt')
+    return Image.from_json(js.load(fp))
+
+
+def immsave(image, fp, file_mode=0o664, quality=90):
+    '''Saves an image with metadata to file.
+
+    Parameters
+    ----------
+    imm : Image
+        an image with metadata
+    fp : object
+        string representing a local filepath or an open writable file handle
+    file_mode : int
+        file mode to be set to using :func:`os.chmod`. Only valid if fp is a string. If None is given, no setting of file mode will happen.
+    quality : int
+        percentage of image quality. Default is 90.
+
+    Raises
+    ------
+    OSError
+        if an error occured while loading
+    '''
+
+    if isinstance(fp, str):
+        fp2 = open(fp, 'wt')
+        js.dump(image.to_json(quality=quality), fp2, indent=4)
+        if file_mode:  # chmod
+            bp.chmod(df_filepath, file_mode)
+    else:
+        js.dump(image.to_json(quality=quality), fp, indent=4)
+        
