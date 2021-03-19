@@ -16,7 +16,7 @@ def main(args):
     cv.waitKey(0)
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Tool to view an image with metadata (IMM) file.")
     parser.add_argument('imm_file', type=str,
                         help="The file to view.")
     args = parser.parse_args()    
