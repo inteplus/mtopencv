@@ -64,5 +64,5 @@ def crop_image(out_image, in_image, crop_rect, border_mode='constant'):
     border_mode : {'constant', 'replicate'}
         border filling mode. 'constant' means filling zero constant. 'replicate' means replicating last pixels in each dimension. 
     '''    
-    crop_tfm = ga.crop_rect(crop)
+    crop_tfm = ga.crop_rect(crop_rect)
     return warp_image(out_image, in_image, crop_tfm, border_mode=border_mode)
