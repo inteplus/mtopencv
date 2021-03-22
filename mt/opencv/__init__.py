@@ -1,3 +1,11 @@
+'''OpenCV package with some extra functionalities implemented by Minh-Tri Pham.
+
+Examples
+--------
+>>> from mt import cv
+
+'''
+
 from mt.base import logger
 
 try:
