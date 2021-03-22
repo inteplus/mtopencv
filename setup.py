@@ -12,8 +12,8 @@ setup(name='mtopencv',
           'scripts/immview.py',
       ],
       install_requires=[
-          'mtbase>=1.1.1',
-          'mtgeo>=0.7.2',
+          'mtbase>=1.2.6',
+          'mtgeo>=0.7.5',
           'opencv-python',
           'pyturbojpeg', # for encoding/decoding images
       ]

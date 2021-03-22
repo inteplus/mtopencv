@@ -1,7 +1,7 @@
 '''Affine-warping and cropping an image.'''
 
 
-import mt.geo.affine2d as ga
+import mt.geo2d as g2
 from . import cv2 as cv
 
 
@@ -51,7 +51,7 @@ def warp_image(out_image, in_image, warp_tfm, inter_mode='nearest', border_mode=
     border_mode : {'constant', 'replicate'}
         border filling mode. 'constant' means filling zero constant. 'replicate' means replicating last pixels in each dimension. 
     '''    
-    inv_tfm = ~(ga.scale2d(out_image.shape[1], out_image.shape[0])*warp_tfm)
+    inv_tfm = ~(g2.scale2d(out_image.shape[1], out_image.shape[0])*warp_tfm)
     return do_warp_image(out_image, in_image, inv_tfm, inter_mode=inter_mode, border_mode=border_mode)
 
 
@@ -71,5 +71,5 @@ def crop_image(out_image, in_image, crop_rect, inter_mode='nearest', border_mode
     border_mode : {'constant', 'replicate'}
         border filling mode. 'constant' means filling zero constant. 'replicate' means replicating last pixels in each dimension. 
     '''    
-    crop_tfm = ga.crop_rect(crop_rect)
+    crop_tfm = g2.crop_rect(crop_rect)
     return warp_image(out_image, in_image, crop_tfm, inter_mode=inter_mode, border_mode=border_mode)
