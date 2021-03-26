@@ -60,7 +60,10 @@ def main(args):
         print(imm.meta)
         view(get_image(imm), max_width=args.max_width)
     else:
-        image_type = what(args.imm_file)
+        if args.imm_file.lower().endswith('.jp2'):
+            image_type = 'JPEG2000'
+        else:
+            image_type = what(args.imm_file)
         if image_type is None:
             print("Not an image file: {}".format(args.imm_file))
         else:
