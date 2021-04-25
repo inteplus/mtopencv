@@ -1,9 +1,9 @@
 '''An self-contained image.'''
 
 
-import json as js
-import numpy as np
 import base64
+import json
+import numpy as np
 import turbojpeg as tj
 _tj = tj.TurboJPEG()
 
@@ -148,7 +148,7 @@ def immload(fp):
 
     if isinstance(fp, str):
         fp = open(fp, 'rt')
-    return Image.from_json(js.load(fp))
+    return Image.from_json(json.load(fp))
 
 
 def immsave(image, fp, file_mode=0o664, quality=90):
@@ -173,9 +173,9 @@ def immsave(image, fp, file_mode=0o664, quality=90):
 
     if isinstance(fp, str):
         fp2 = open(fp, 'wt')
-        js.dump(image.to_json(quality=quality), fp2, indent=4)
+        json.dump(image.to_json(quality=quality), fp2, indent=4)
         if file_mode:  # chmod
             bp.chmod(fp, file_mode)
     else:
-        js.dump(image.to_json(quality=quality), fp, indent=4)
+        json.dump(image.to_json(quality=quality), fp, indent=4)
         
