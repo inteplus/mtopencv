@@ -2,6 +2,8 @@
 
 import argparse
 from imghdr import what
+#from PIL import Image
+import ascii_magic
 from mt import cv, np
 
 def get_image(imm):
@@ -41,14 +43,20 @@ def get_image(imm):
 
     raise ValueError("Imm with pixel format '{}' is not supported.".format(imm.pixel_format))
 
-def view(image, max_width=640):
+def view(image, max_width=640, as_ascii=False):
     if max_width < image.shape[1]:
         height = image.shape[0]*max_width//image.shape[1]
         image = cv.resize(image, dsize=(max_width, height))
-    cv.namedWindow('image')
-    print("Press any key to exit.")
-    cv.imshow('image', image)
-    cv.waitKey(0)
+    if as_ascii:
+        img2 = cv.cvtColor(image, cv.COLOR_BGR2RGB)
+        img2 = Image.fromarray(img2)
+        output = ascii_magic.from_image(img2)
+        ascii_magic.to_terminal(output)
+    else:
+        cv.namedWindow('image')
+        print("Press any key to exit.")
+        cv.imshow('image', image)
+        cv.waitKey(0)
 
 def main(args):
     if args.imm_file.endswith('.imm'):
@@ -71,13 +79,15 @@ def main(args):
             print("File type: {}".format(image_type))
             image = cv.imread(args.imm_file)
             print("Resolution: {}x{}".format(image.shape[1], image.shape[0]))
-            view(image, max_width=args.max_width)
+            view(image, max_width=args.max_width, as_ascii=args.ascii)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Tool to view an image with metadata (IMM) file.")
     parser.add_argument('--max_width', type=int, default=640,
                         help="The maximum width to view. Default is 640.")
+    parser.add_argument('-a', '--ascii', action='store_true',
+                        help="To display the image to the terminal using ASCII characters.")
     parser.add_argument('imm_file', type=str,
                         help="The file to view.")
-    args = parser.parse_args()    
+    args = parser.parse_args()
     main(args)
