@@ -2,7 +2,7 @@
 
 import argparse
 from imghdr import what
-#from PIL import Image
+from PIL import Image
 import ascii_magic
 from mt import cv, np
 
@@ -66,7 +66,7 @@ def main(args):
         print("Resolution: {}x{}".format(imm.image.shape[1], imm.image.shape[0]))
         print("Meta:")
         print(imm.meta)
-        view(get_image(imm), max_width=args.max_width)
+        view(get_image(imm), max_width=args.max_width, as_ascii=args.ascii)
     else:
         if args.imm_file.lower().endswith('.jp2'):
             image_type = 'JPEG2000'
