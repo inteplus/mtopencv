@@ -12,7 +12,7 @@ setup(name='mtopencv',
           'scripts/immview.py',
       ],
       install_requires=[
-          'mtbase>=1.2.6',
+          'mtbase>=1.2.9',
           'mtgeo>=0.7.5',
           #'opencv-python', # let them install opencv-python or opencv-python-headless or whatever
           'ansicolors', # for displaying images on the terminal
