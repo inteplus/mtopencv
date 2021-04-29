@@ -14,7 +14,7 @@ def get_pixel(col):
     return color(' ', bg=f'rgb({int(col[0])}, {int(col[1])}, {int(col[2])})')
 
 
-def to_ansi(img, imgres=None):
+def to_ansi(img, imgres=None, margin=7):
     '''Converts an RGB image into ANSI format for displaying on a terminal.
 
     Given an image, the function first determines the resolution to which the image
@@ -30,6 +30,8 @@ def to_ansi(img, imgres=None):
     imgres : list, optional
         pair of [width, height] defining the target resolution. If not specified,
         we estimate from the current terminal.
+    margin : int
+        Only valid if imgres is None. The argument specifies the number of letters in both width and height to be preserved as margin
 
     Returns
     -------
@@ -45,8 +47,8 @@ def to_ansi(img, imgres=None):
 
         # reduce a bit if we can
         for i in range(2):
-            if imgres[i] > 10:
-                imgres[i] -= 2
+            if imgres[i] > margin*2:
+                imgres[i] -= margin
 
         # width:height aspect ratio
         ratio = img_imgres[0]*2/img_imgres[1]

@@ -9,7 +9,7 @@ setup(name='mtopencv',
       author=["Minh-Tri Pham"],
       packages=find_namespace_packages(include=['mt.*']),
       scripts=[
-          'scripts/immview.py',
+          'scripts/immview',
       ],
       install_requires=[
           'mtbase>=1.2.9',

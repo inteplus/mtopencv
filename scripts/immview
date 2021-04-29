@@ -66,6 +66,10 @@ def main(args):
     else:
         if args.imm_file.lower().endswith('.jp2'):
             image_type = 'JPEG2000'
+        elif args.imm_file.lower().endswith('.jpg'):
+            image_type = 'JPEG'
+        elif args.imm_file.lower().endswith('.jpeg'):
+            image_type = 'JPEG'
         else:
             image_type = what(args.imm_file)
         if image_type is None:
