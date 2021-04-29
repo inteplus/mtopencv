@@ -15,6 +15,7 @@ setup(name='mtopencv',
           'mtbase>=1.2.6',
           'mtgeo>=0.7.5',
           'opencv-python',
+          'ansicolors', # for displaying images on the terminal
           'ascii_magic', # for displaying images on the terminal
           'pyturbojpeg', # for encoding/decoding images
       ]
