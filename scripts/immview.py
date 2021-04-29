@@ -2,8 +2,6 @@
 
 import argparse
 from imghdr import what
-from PIL import Image
-import ascii_magic
 from mt import cv, np
 
 def get_image(imm):
@@ -43,15 +41,13 @@ def get_image(imm):
 
     raise ValueError("Imm with pixel format '{}' is not supported.".format(imm.pixel_format))
 
-def view(image, max_width=640, as_ascii=False):
+def view(image, max_width=640, as_ansi=True):
     if max_width < image.shape[1]:
         height = image.shape[0]*max_width//image.shape[1]
         image = cv.resize(image, dsize=(max_width, height))
-    if as_ascii:
+    if as_ansi:
         img2 = cv.cvtColor(image, cv.COLOR_BGR2RGB)
-        img2 = Image.fromarray(img2)
-        output = ascii_magic.from_image(img2)
-        ascii_magic.to_terminal(output)
+        print(cv.to_ansi(img2))
     else:
         cv.namedWindow('image')
         print("Press any key to exit.")
@@ -66,7 +62,7 @@ def main(args):
         print("Resolution: {}x{}".format(imm.image.shape[1], imm.image.shape[0]))
         print("Meta:")
         print(imm.meta)
-        view(get_image(imm), max_width=args.max_width, as_ascii=args.ascii)
+        view(get_image(imm), max_width=args.max_width, as_ansi=not args.use_highgui)
     else:
         if args.imm_file.lower().endswith('.jp2'):
             image_type = 'JPEG2000'
@@ -79,14 +75,14 @@ def main(args):
             print("File type: {}".format(image_type))
             image = cv.imread(args.imm_file)
             print("Resolution: {}x{}".format(image.shape[1], image.shape[0]))
-            view(image, max_width=args.max_width, as_ascii=args.ascii)
+            view(image, max_width=args.max_width, as_ansi=not args.use_highgui)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Tool to view an image with metadata (IMM) file.")
     parser.add_argument('--max_width', type=int, default=640,
                         help="The maximum width to view. Default is 640.")
-    parser.add_argument('-a', '--ascii', action='store_true',
-                        help="To display the image to the terminal using ASCII characters.")
+    parser.add_argument('-X', '--use_highgui', action='store_true',
+                        help="Uses OpenCV's highgui module to display the image.")
     parser.add_argument('imm_file', type=str,
                         help="The file to view.")
     args = parser.parse_args()
