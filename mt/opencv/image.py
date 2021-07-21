@@ -43,6 +43,9 @@ class Image(object):
         self.pixel_format = pixel_format
         self.meta = meta
 
+    def __repr__(self):
+        return "cv.Image(image.shape={}, pixel_format={}, meta={})".format(self.image.shape, self.pixel_format, json.dumps(self.meta))
+
     def check(self):
         '''Checks for data consistency, raising a ValueError if something has gone wrong.'''
         if len(self.image.shape) == 2:
