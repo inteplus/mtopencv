@@ -12,8 +12,8 @@ setup(name='mtopencv',
           'scripts/immview',
       ],
       install_requires=[
-          'mtbase>=1.2.9',
-          'mtgeo>=0.7.5',
+          'mtbase>=1.4.7',
+          'mtgeo>=0.7.7',
           #'opencv-python', # let them install opencv-python or opencv-python-headless or whatever
           'ansicolors', # for displaying images on the terminal
           'pyturbojpeg', # for encoding/decoding images
