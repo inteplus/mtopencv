@@ -8,6 +8,8 @@ Examples
 
 from mt.base import logger
 
+from .version import version as __version__
+
 try:
     import cv2
 except ImportError:
