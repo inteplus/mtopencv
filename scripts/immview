@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import asyncio
 import argparse
 from imghdr import what
 from mt import cv, np
@@ -54,7 +55,7 @@ def view(image, max_width=640, as_ansi=True):
         cv.imshow('image', image)
         cv.waitKey(0)
 
-def main(args):
+async def main(args):
     if args.imm_file.endswith('.imm'):
         imm = cv.immload(args.imm_file)
         print("Image path: {}".format(args.imm_file))
@@ -90,4 +91,4 @@ if __name__ == '__main__':
     parser.add_argument('imm_file', type=str,
                         help="The file to view.")
     args = parser.parse_args()
-    main(args)
+    asyncio.run(main(args))
