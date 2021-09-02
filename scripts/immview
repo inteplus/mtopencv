@@ -2,8 +2,8 @@
 
 import asyncio
 import argparse
-from imghdr import what
 from mt import cv, np
+from mt.base.imghdr import what_aio
 
 def get_image(imm):
     if imm.pixel_format in ['gray', 'bgr']:
@@ -72,13 +72,13 @@ async def main(args):
         elif args.imm_file.lower().endswith('.jpeg'):
             image_type = 'JPEG'
         else:
-            image_type = what(args.imm_file)
+            image_type = await what_aio(args.imm_file)
         if image_type is None:
             print("Not an image file: {}".format(args.imm_file))
         else:
             print("Image path: {}".format(args.imm_file))
             print("File type: {}".format(image_type))
-            image = cv.imread(args.imm_file)
+            image = await cv.imload(args.imm_file)
             print("Resolution: {}x{}".format(image.shape[1], image.shape[0]))
             view(image, max_width=args.max_width, as_ansi=not args.use_highgui)
 
