@@ -256,7 +256,8 @@ async def imload(filepath: str, flags=None):
         contents = await f.read()
 
     from cv2 import imdecode
-    return imdecode(contents, flags=flags)
+    buf = np.asarray(bytearray(contents), dtype=np.uint8)
+    return imdecode(buf, flags=flags)
 
 
 async def imsave(filepath: str, img: np.ndarray, params=None):
@@ -272,12 +273,13 @@ async def imsave(filepath: str, img: np.ndarray, params=None):
         Format-specific parameters, if any. Like those 'cv.IMWRITE_xxx' flags. See :func:`cv.imwrite`.
     '''
 
-    ext = path.splitext(filepath)
+    ext = path.splitext(filepath)[1]
     from cv2 import imencode
     res, contents = imencode(ext, img, params=params)
 
     if res is not True:
         raise ValueError("Unable to encode the input image.")
 
+    buf = np.array(contents.tostring())
     async with aiofiles.open(filepath, mode='wb') as f:
-        await f.write(contents)
+        await f.write(buf)
