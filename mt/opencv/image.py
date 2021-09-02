@@ -133,7 +133,7 @@ class Image(object):
         return Image(image, pixel_format=pixel_format, meta=meta)
 
 
-@deprecated_func("0.4", suggested_func="immload_aio", removed_version="0.10", docstring_prefix="    ")
+@deprecated_func("0.4", suggested_func="immload_aio", removed_version="1.0", docstring_prefix="    ")
 def immload(fp):
     '''Loads an image with metadata in the usual IO-blocking way.
 
@@ -183,6 +183,30 @@ async def immload_aio(fp):
         return Image.from_json(json.loads(contents))
 
 
+@deprecated_func("0.4", suggested_func="immload_aio", removed_version="1.0", docstring_prefix="    ")
+def immsave(image, fp, file_mode=0o664, quality=90):
+    '''Saves an image with metadata to file in the usual IO-blocking way.
+
+    Parameters
+    ----------
+    imm : Image
+        an image with metadata
+    fp : object
+        string representing a local filepath or an open writable file handle
+    file_mode : int
+        file mode to be set to using :func:`os.chmod`. Only valid if fp is a string. If None is given, no setting of file mode will happen.
+    quality : int
+        percentage of image quality. Default is 90.
+
+    Raises
+    ------
+    OSError
+        if an error occured while loading
+    '''
+
+    return asyncio.run(immsave_aio(image, fp, file_mode=file_mode, quality=quality))
+
+
 async def immsave_aio(image, fp, file_mode=0o664, quality=90):
     '''Saves an image with metadata to file asynchronously.
 
@@ -213,29 +237,6 @@ async def immsave_aio(image, fp, file_mode=0o664, quality=90):
         path.chmod(fp, file_mode)
 
 
-def immsave(image, fp, file_mode=0o664, quality=90):
-    '''Saves an image with metadata to file in the usual IO-blocking way.
-
-    Parameters
-    ----------
-    imm : Image
-        an image with metadata
-    fp : object
-        string representing a local filepath or an open writable file handle
-    file_mode : int
-        file mode to be set to using :func:`os.chmod`. Only valid if fp is a string. If None is given, no setting of file mode will happen.
-    quality : int
-        percentage of image quality. Default is 90.
-
-    Raises
-    ------
-    OSError
-        if an error occured while loading
-    '''
-
-    return asyncio.run(immsave_aio(image, fp, file_mode=file_mode, quality=quality))
-
-
 async def imload(filepath: str, flags=None):
     '''Wrapper on :func:`cv.imread` but with asynchronous IO.
 
@@ -250,6 +251,11 @@ async def imload(filepath: str, flags=None):
     -------
     img : numpy.ndarray
         the loaded image
+
+    See Also
+    --------
+    cv.imread
+        wrapped function
     '''
 
     async with aiofiles.open(filepath, mode='rb') as f:
@@ -271,6 +277,11 @@ async def imsave(filepath: str, img: np.ndarray, params=None):
         the image to be saved
     params : int
         Format-specific parameters, if any. Like those 'cv.IMWRITE_xxx' flags. See :func:`cv.imwrite`.
+
+    See Also
+    --------
+    cv.imwrite
+        wrapped function
     '''
 
     ext = path.splitext(filepath)[1]
