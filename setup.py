@@ -12,6 +12,7 @@ setup(name='mtopencv',
           'scripts/immview',
       ],
       install_requires=[
+          'aiofiles', # to load/save files asynchronously
           'mtbase>=1.6',
           'mtgeo>=0.7.7',
           #'opencv-python', # let them install opencv-python or opencv-python-headless or whatever

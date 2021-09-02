@@ -57,7 +57,7 @@ def view(image, max_width=640, as_ansi=True):
 
 async def main(args):
     if args.imm_file.endswith('.imm'):
-        imm = cv.immload(args.imm_file)
+        imm = await cv.immload_aio(args.imm_file)
         print("Image path: {}".format(args.imm_file))
         print("Pixel format: {}".format(imm.pixel_format))
         print("Resolution: {}x{}".format(imm.image.shape[1], imm.image.shape[0]))

@@ -1,16 +1,19 @@
 '''An self-contained image.'''
 
 
+import asyncio
+import aiofiles
 import base64
 import json
-import numpy as np
 import turbojpeg as tj
 _tj = tj.TurboJPEG()
 
-import mt.base.path as bp
+from mt import np
+from mt.base import path
+from mt.base.deprecated import deprecated_func
 
 
-__all__ = ['PixelFormat', 'Image', 'immload', 'immsave']
+__all__ = ['PixelFormat', 'Image', 'immload', 'immsave', 'immload_aio', 'immsave_aio']
 
 
 
@@ -130,8 +133,9 @@ class Image(object):
         return Image(image, pixel_format=pixel_format, meta=meta)
 
 
+@deprecated_func("0.4", suggested_func="immload_aio", removed_version="0.10", docstring_prefix="    ")
 def immload(fp):
-    '''Loads an image with metadata.
+    '''Loads an image with metadata in the usual IO-blocking way.
 
     Parameters
     ----------
@@ -149,13 +153,38 @@ def immload(fp):
         if an error occured while loading
     '''
 
-    if isinstance(fp, str):
-        fp = open(fp, 'rt')
-    return Image.from_json(json.load(fp))
+    return asyncio.run(immload_aio(fp))
 
 
-def immsave(image, fp, file_mode=0o664, quality=90):
-    '''Saves an image with metadata to file.
+async def immload_aio(fp):
+    '''Loads an image with metadata asynchronously.
+
+    Parameters
+    ----------
+    fp : object
+        string representing a local filepath or an open readable file handle
+
+    Returns
+    -------
+    Image
+        the loaded image with metadata
+
+    Raises
+    ------
+    OSError
+        if an error occured while loading
+    '''
+
+    if not isinstance(fp, str):
+        return Image.from_json(json.load(fp))
+
+    async with aiofiles.open(fp, mode='rt') as f:
+        contents = await f.read()
+        return Image.from_json(json.loads(contents))
+
+
+async def immsave_aio(image, fp, file_mode=0o664, quality=90):
+    '''Saves an image with metadata to file asynchronously.
 
     Parameters
     ----------
@@ -174,11 +203,34 @@ def immsave(image, fp, file_mode=0o664, quality=90):
         if an error occured while loading
     '''
 
-    if isinstance(fp, str):
-        fp2 = open(fp, 'wt')
-        json.dump(image.to_json(quality=quality), fp2, indent=4)
-        if file_mode:  # chmod
-            bp.chmod(fp, file_mode)
-    else:
-        json.dump(image.to_json(quality=quality), fp, indent=4)
-        
+    if not isinstance(fp, str):
+        return json.dump(image.to_json(quality=quality), fp, indent=4)
+
+    async with aiofiles.open(fp, mode='wt') as fp2:
+        contents = json.dumps(image.to_json(quality=quality), fp2, indent=4)
+        await f.write(contents)
+    if file_mode:  # chmod
+        path.chmod(fp, file_mode)
+
+
+def immsave(image, fp, file_mode=0o664, quality=90):
+    '''Saves an image with metadata to file in the usual IO-blocking way.
+
+    Parameters
+    ----------
+    imm : Image
+        an image with metadata
+    fp : object
+        string representing a local filepath or an open writable file handle
+    file_mode : int
+        file mode to be set to using :func:`os.chmod`. Only valid if fp is a string. If None is given, no setting of file mode will happen.
+    quality : int
+        percentage of image quality. Default is 90.
+
+    Raises
+    ------
+    OSError
+        if an error occured while loading
+    '''
+
+    return asyncio.run(immsave_aio(image, fp, file_mode=file_mode, quality=quality))
