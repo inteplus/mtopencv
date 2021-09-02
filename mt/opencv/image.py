@@ -13,7 +13,7 @@ from mt.base import path
 from mt.base.deprecated import deprecated_func
 
 
-__all__ = ['PixelFormat', 'Image', 'immload', 'immsave', 'immload_aio', 'immsave_aio']
+__all__ = ['PixelFormat', 'Image', 'immload', 'immsave', 'immload_aio', 'immsave_aio', 'imload', 'imsave']
 
 
 
@@ -234,3 +234,50 @@ def immsave(image, fp, file_mode=0o664, quality=90):
     '''
 
     return asyncio.run(immsave_aio(image, fp, file_mode=file_mode, quality=quality))
+
+
+async def imload(filepath: str, flags=None):
+    '''Wrapper on :func:`cv.imread` but with asynchronous IO.
+
+    Parameters
+    ----------
+    filepath : str
+        Local path to the file to be loaded
+    flags : int
+        'cv.IMREAD_xxx' flags, if any. See :func:`cv:imread`.
+
+    Returns
+    -------
+    img : numpy.ndarray
+        the loaded image
+    '''
+
+    async with aiofiles.open(filepath, mode='rb') as f:
+        contents = await f.read()
+
+    from cv2 import imdecode
+    return imdecode(contents, flags=flags)
+
+
+async def imsave(filepath: str, img: np.ndarray, params=None):
+    '''Wrapper on :func:`cv.imwrite` but with asynchronous IO.
+
+    Parameters
+    ----------
+    filepath : str
+        Local path to the file to be saved to
+    img : numpy.ndarray
+        the image to be saved
+    params : int
+        Format-specific parameters, if any. Like those 'cv.IMWRITE_xxx' flags. See :func:`cv.imwrite`.
+    '''
+
+    ext = path.splitext(filepath)
+    from cv2 import imencode
+    res, contents = imencode(ext, img, params=params)
+
+    if res is not True:
+        raise ValueError("Unable to encode the input image.")
+
+    async with aiofiles.open(filepath, mode='wb') as f:
+        await f.write(contents)
