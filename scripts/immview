@@ -3,7 +3,7 @@
 import asyncio
 import argparse
 from mt import cv, np
-from mt.base.imghdr import what_aio
+from mt.base import filetype
 
 def get_image(imm):
     if imm.pixel_format in ['gray', 'bgr']:
@@ -66,13 +66,14 @@ async def main(args):
         view(get_image(imm), max_width=args.max_width, as_ansi=not args.use_highgui)
     else:
         if args.imm_file.lower().endswith('.jp2'):
-            image_type = 'JPEG2000'
+            image_type = 'jpx'
         elif args.imm_file.lower().endswith('.jpg'):
-            image_type = 'JPEG'
+            image_type = 'jpg'
         elif args.imm_file.lower().endswith('.jpeg'):
-            image_type = 'JPEG'
+            image_type = 'jpg'
         else:
-            image_type = await what_aio(args.imm_file)
+            image_type_detail = await filetype.image_match_aio(args.imm_file)
+            image_type = None if image_type_detail is None else image_type_detail.extension
         if image_type is None:
             print("Not an image file: {}".format(args.imm_file))
         else:
