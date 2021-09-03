@@ -79,7 +79,7 @@ async def main(args):
         else:
             print("Image path: {}".format(args.imm_file))
             print("File type: {}".format(image_type))
-            image = await cv.imload(args.imm_file)
+            image = await cv.imload_aio(args.imm_file)
             print("Resolution: {}x{}".format(image.shape[1], image.shape[0]))
             view(image, max_width=args.max_width, as_ansi=not args.use_highgui)
 

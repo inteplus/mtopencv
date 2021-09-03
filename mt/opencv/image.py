@@ -14,7 +14,7 @@ from mt.base import path
 from mt.base.deprecated import deprecated_func
 
 
-__all__ = ['PixelFormat', 'Image', 'immload', 'immsave', 'immload_aio', 'immsave_aio', 'imload', 'imsave']
+__all__ = ['PixelFormat', 'Image', 'immload', 'immsave', 'immload_aio', 'immsave_aio', 'imload', 'imsave', 'imload_aio', 'imsave_aio']
 
 
 
@@ -238,7 +238,7 @@ async def immsave_aio(image, fp, file_mode=0o664, quality=90):
         path.chmod(fp, file_mode)
 
 
-async def imload(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH):
+async def imload_aio(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH):
     '''Wrapper on :func:`cv.imread` but with asynchronous IO.
 
     Parameters
@@ -266,7 +266,31 @@ async def imload(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH)
     return cv2.imdecode(buf, flags=flags)
 
 
-async def imsave(filepath: str, img: np.ndarray, params=None):
+@deprecated_func("0.4", suggested_func="imload_aio", removed_version="1.0", docstring_prefix="    ")
+def imload(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH):
+    '''Wrapper on :func:`cv.imread` in the usual IO-blocking way.
+
+    Parameters
+    ----------
+    filepath : str
+        Local path to the file to be loaded
+    flags : int
+        'cv.IMREAD_xxx' flags, if any. See :func:`cv:imread`.
+
+    Returns
+    -------
+    img : numpy.ndarray
+        the loaded image
+
+    See Also
+    --------
+    imload_aio
+        wrapped asynchronous function
+    '''
+    return asyncio.run(imload_aio(filepath, flags=flags))
+
+
+async def imsave_aio(filepath: str, img: np.ndarray, params=None):
     '''Wrapper on :func:`cv.imwrite` but with asynchronous IO.
 
     Parameters
@@ -293,3 +317,25 @@ async def imsave(filepath: str, img: np.ndarray, params=None):
     buf = np.array(contents.tostring())
     async with aiofiles.open(filepath, mode='wb') as f:
         await f.write(buf)
+
+
+@deprecated_func("0.4", suggested_func="imsave_aio", removed_version="1.0", docstring_prefix="    ")
+def imsave(filepath: str, img: np.ndarray, params=None):
+    '''Wrapper on :func:`cv.imwrite` in the usual IO-blocking way.
+
+    Parameters
+    ----------
+    filepath : str
+        Local path to the file to be saved to
+    img : numpy.ndarray
+        the image to be saved
+    params : int
+        Format-specific parameters, if any. Like those 'cv.IMWRITE_xxx' flags. See :func:`cv.imwrite`.
+
+    See Also
+    --------
+    imsave_aio
+        wrapped asynchronous function
+    '''
+
+    return asyncio.run(imsave_aio(filepath, img, params=params))
