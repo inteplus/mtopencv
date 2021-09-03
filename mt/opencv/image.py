@@ -7,6 +7,7 @@ import base64
 import json
 import turbojpeg as tj
 _tj = tj.TurboJPEG()
+import cv2
 
 from mt import np
 from mt.base import path
@@ -237,7 +238,7 @@ async def immsave_aio(image, fp, file_mode=0o664, quality=90):
         path.chmod(fp, file_mode)
 
 
-async def imload(filepath: str, flags=None):
+async def imload(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH):
     '''Wrapper on :func:`cv.imread` but with asynchronous IO.
 
     Parameters
@@ -261,9 +262,8 @@ async def imload(filepath: str, flags=None):
     async with aiofiles.open(filepath, mode='rb') as f:
         contents = await f.read()
 
-    from cv2 import imdecode
     buf = np.asarray(bytearray(contents), dtype=np.uint8)
-    return imdecode(buf, flags=flags)
+    return cv2.imdecode(buf, flags=flags)
 
 
 async def imsave(filepath: str, img: np.ndarray, params=None):
@@ -285,8 +285,7 @@ async def imsave(filepath: str, img: np.ndarray, params=None):
     '''
 
     ext = path.splitext(filepath)[1]
-    from cv2 import imencode
-    res, contents = imencode(ext, img, params=params)
+    res, contents = cv2.imencode(ext, img, params=params)
 
     if res is not True:
         raise ValueError("Unable to encode the input image.")
