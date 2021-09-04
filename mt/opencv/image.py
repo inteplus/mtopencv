@@ -10,7 +10,7 @@ import cv2
 
 from mt import np
 from mt.base import path
-from mt.base.file import read_binary_async
+from mt.base.asyn import srun, read_binary, write_binary
 
 
 __all__ = ['PixelFormat', 'Image', 'immload', 'immsave', 'imload', 'imsave']
@@ -169,7 +169,7 @@ def immload(fp, asynchronous: bool = False):
     return Image.from_json(json.load(fp))
 
 
-def immsave(image, fp, file_mode: int = 0o664, quality: float = 90, asynchronous : bool = False):
+def immsave(image, fp, file_mode: int = 0o664, quality: float = 90, asynchronous: bool = False):
     '''Saves an image with metadata to file.
 
     Parameters
@@ -212,8 +212,8 @@ def immsave(image, fp, file_mode: int = 0o664, quality: float = 90, asynchronous
     return func(image, fp, file_mode=file_mode, quality=quality)
 
 
-def imload(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH, asynchronous : bool = False):
-    '''Wrapper on :func:`cv.imread` with an ability to do file I/O asynchronously.
+async def imload(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH, asyn: bool = True):
+    '''An asyn function wrapping on :func:`cv.imread`.
 
     Parameters
     ----------
@@ -221,9 +221,8 @@ def imload(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH, async
         Local path to the file to be loaded
     flags : int
         'cv.IMREAD_xxx' flags, if any. See :func:`cv:imread`.
-    asynchronous : bool
-        whether or not the file I/O is done asynchronously. If True, you must use keyword 'await'
-        to invoke the function
+    asyn : bool
+        whether the function is to be invoked asynchronously or synchronously
 
     Returns
     -------
@@ -236,19 +235,13 @@ def imload(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH, async
         wrapped function
     '''
 
-    async def async_func(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH):
-        contents = await read_binary_async(filepath)
-        buf = np.asarray(bytearray(contents), dtype=np.uint8)
-        return cv2.imdecode(buf, flags=flags)
-
-    if asynchronous:
-        return async_func(filepath, flags=flags)
-
-    return cv2.imread(filepath, flags=flags)
+    contents = await read_binary(filepath, asyn=asyn)
+    buf = np.asarray(bytearray(contents), dtype=np.uint8)
+    return cv2.imdecode(buf, flags=flags)
 
 
-def imsave(filepath: str, img: np.ndarray, params=None, asynchronous : bool = False):
-    '''Wrapper on :func:`cv.imwrite` in the usual IO-blocking way.
+async def imsave(filepath: str, img: np.ndarray, params=None, asyn: bool = True):
+    '''An asyn function wrapping on :func:`cv.imwrite`.
 
     Parameters
     ----------
@@ -258,9 +251,8 @@ def imsave(filepath: str, img: np.ndarray, params=None, asynchronous : bool = Fa
         the image to be saved
     params : int
         Format-specific parameters, if any. Like those 'cv.IMWRITE_xxx' flags. See :func:`cv.imwrite`.
-    asynchronous : bool
-        whether or not the file I/O is done asynchronously. If True, you must use keyword 'await'
-        to invoke the function
+    asyn : bool
+        whether the function is to be invoked asynchronously or synchronously
 
     See Also
     --------
@@ -268,18 +260,11 @@ def imsave(filepath: str, img: np.ndarray, params=None, asynchronous : bool = Fa
         wrapped asynchronous function
     '''
 
-    async def async_func(filepath: str, img: np.ndarray, params=None):
-        ext = path.splitext(filepath)[1]
-        res, contents = cv2.imencode(ext, img, params=params)
+    ext = path.splitext(filepath)[1]
+    res, contents = cv2.imencode(ext, img, params=params)
 
-        if res is not True:
-            raise ValueError("Unable to encode the input image.")
+    if res is not True:
+        raise ValueError("Unable to encode the input image.")
 
-        buf = np.array(contents.tostring())
-        async with aiofiles.open(filepath, mode='wb') as f:
-            await f.write(buf)
-
-    if asynchronous:
-        return async_func(filepath, img, params=params)
-
-    return cv2.imwrite(filepath, img, params=params)
+    buf = np.array(contents.tostring())
+    return (await write_binary(filepath, buf, asyn=asyn))
