@@ -235,7 +235,7 @@ def imload(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH, async
         wrapped function
     '''
 
-    def async_func(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH):
+    async def async_func(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH):
         async with aiofiles.open(filepath, mode='rb') as f:
             contents = await f.read()
 
