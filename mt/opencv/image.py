@@ -10,6 +10,7 @@ import cv2
 
 from mt import np
 from mt.base import path
+from mt.base.file import read_binary_async
 
 
 __all__ = ['PixelFormat', 'Image', 'immload', 'immsave', 'imload', 'imsave']
@@ -236,9 +237,7 @@ def imload(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH, async
     '''
 
     async def async_func(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH):
-        async with aiofiles.open(filepath, mode='rb') as f:
-            contents = await f.read()
-
+        contents = await read_binary_async(filepath)
         buf = np.asarray(bytearray(contents), dtype=np.uint8)
         return cv2.imdecode(buf, flags=flags)
 
