@@ -1,7 +1,6 @@
 '''An self-contained image.'''
 
 
-import asyncio
 import aiofiles
 import base64
 import json
@@ -11,10 +10,9 @@ import cv2
 
 from mt import np
 from mt.base import path
-from mt.base.deprecated import deprecated_func
 
 
-__all__ = ['PixelFormat', 'Image', 'immload', 'immsave', 'immload_aio', 'immsave_aio', 'imload', 'imsave', 'imload_aio', 'imsave_aio']
+__all__ = ['PixelFormat', 'Image', 'immload', 'immsave', 'imload', 'imsave']
 
 
 
@@ -134,14 +132,16 @@ class Image(object):
         return Image(image, pixel_format=pixel_format, meta=meta)
 
 
-@deprecated_func("0.4", suggested_func="immload_aio", removed_version="1.0", docstring_prefix="    ")
-def immload(fp):
-    '''Loads an image with metadata in the usual IO-blocking way.
+def immload(fp, asynchronous: bool = False):
+    '''Loads an image with metadata.
 
     Parameters
     ----------
     fp : object
         string representing a local filepath or an open readable file handle
+    asynchronous : bool
+        whether or not the file I/O is done asynchronously. If True, you must use keyword 'await'
+        to invoke the function
 
     Returns
     -------
@@ -154,39 +154,22 @@ def immload(fp):
         if an error occured while loading
     '''
 
-    return asyncio.run(immload_aio(fp))
+    async def async_func(fp):
+        if not isinstance(fp, str):
+            return Image.from_json(json.load(fp))
+
+        async with aiofiles.open(fp, mode='rt') as f:
+            contents = await f.read()
+            return Image.from_json(json.loads(contents))
+
+    if asynchronous:
+        return async_func(fp)
+
+    return Image.from_json(json.load(fp))
 
 
-async def immload_aio(fp):
-    '''Loads an image with metadata asynchronously.
-
-    Parameters
-    ----------
-    fp : object
-        string representing a local filepath or an open readable file handle
-
-    Returns
-    -------
-    Image
-        the loaded image with metadata
-
-    Raises
-    ------
-    OSError
-        if an error occured while loading
-    '''
-
-    if not isinstance(fp, str):
-        return Image.from_json(json.load(fp))
-
-    async with aiofiles.open(fp, mode='rt') as f:
-        contents = await f.read()
-        return Image.from_json(json.loads(contents))
-
-
-@deprecated_func("0.4", suggested_func="immload_aio", removed_version="1.0", docstring_prefix="    ")
-def immsave(image, fp, file_mode=0o664, quality=90):
-    '''Saves an image with metadata to file in the usual IO-blocking way.
+def immsave(image, fp, file_mode: int = 0o664, quality: float = 90, asynchronous : bool = False):
+    '''Saves an image with metadata to file.
 
     Parameters
     ----------
@@ -195,9 +178,13 @@ def immsave(image, fp, file_mode=0o664, quality=90):
     fp : object
         string representing a local filepath or an open writable file handle
     file_mode : int
-        file mode to be set to using :func:`os.chmod`. Only valid if fp is a string. If None is given, no setting of file mode will happen.
-    quality : int
+        file mode to be set to using :func:`os.chmod`. Only valid if fp is a string. If None is
+        given, no setting of file mode will happen.
+    quality : float
         percentage of image quality. Default is 90.
+    asynchronous : bool
+        whether or not the file I/O is done asynchronously. If True, you must use keyword 'await'
+        to invoke the function
 
     Raises
     ------
@@ -205,41 +192,27 @@ def immsave(image, fp, file_mode=0o664, quality=90):
         if an error occured while loading
     '''
 
-    return asyncio.run(immsave_aio(image, fp, file_mode=file_mode, quality=quality))
+    async def async_func(image, fp, file_mode=0o664, quality=90):
+        if not isinstance(fp, str):
+            return json.dump(image.to_json(quality=quality), fp, indent=4)
+
+        async with aiofiles.open(fp, mode='wt') as f:
+            contents = json.dumps(image.to_json(quality=quality), indent=4)
+            await f.write(contents)
+        if file_mode is not None:  # chmod
+            path.chmod(fp, file_mode)
+
+    def sync_func(image, fp, file_mode=0o664, quality=90):
+        json.dump(image.to_json(quality=quality), fp, indent=4)
+        if isinstance(fp, str) and file_mode is not None:
+            path.chmod(fp, file_mode)
+
+    func = async_func if asynchronous else sync_func
+    return func(image, fp, file_mode=file_mode, quality=quality)
 
 
-async def immsave_aio(image, fp, file_mode=0o664, quality=90):
-    '''Saves an image with metadata to file asynchronously.
-
-    Parameters
-    ----------
-    imm : Image
-        an image with metadata
-    fp : object
-        string representing a local filepath or an open writable file handle
-    file_mode : int
-        file mode to be set to using :func:`os.chmod`. Only valid if fp is a string. If None is given, no setting of file mode will happen.
-    quality : int
-        percentage of image quality. Default is 90.
-
-    Raises
-    ------
-    OSError
-        if an error occured while loading
-    '''
-
-    if not isinstance(fp, str):
-        return json.dump(image.to_json(quality=quality), fp, indent=4)
-
-    async with aiofiles.open(fp, mode='wt') as fp2:
-        contents = json.dumps(image.to_json(quality=quality), fp2, indent=4)
-        await f.write(contents)
-    if file_mode:  # chmod
-        path.chmod(fp, file_mode)
-
-
-async def imload_aio(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH):
-    '''Wrapper on :func:`cv.imread` but with asynchronous IO.
+def imload(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH, asynchronous : bool = False):
+    '''Wrapper on :func:`cv.imread` with an ability to do file I/O asynchronously.
 
     Parameters
     ----------
@@ -247,6 +220,9 @@ async def imload_aio(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDE
         Local path to the file to be loaded
     flags : int
         'cv.IMREAD_xxx' flags, if any. See :func:`cv:imread`.
+    asynchronous : bool
+        whether or not the file I/O is done asynchronously. If True, you must use keyword 'await'
+        to invoke the function
 
     Returns
     -------
@@ -259,68 +235,20 @@ async def imload_aio(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDE
         wrapped function
     '''
 
-    async with aiofiles.open(filepath, mode='rb') as f:
-        contents = await f.read()
+    def async_func(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH):
+        async with aiofiles.open(filepath, mode='rb') as f:
+            contents = await f.read()
 
-    buf = np.asarray(bytearray(contents), dtype=np.uint8)
-    return cv2.imdecode(buf, flags=flags)
+        buf = np.asarray(bytearray(contents), dtype=np.uint8)
+        return cv2.imdecode(buf, flags=flags)
 
+    if asynchronous:
+        return async_func(filepath, flags=flags)
 
-@deprecated_func("0.4", suggested_func="imload_aio", removed_version="1.0", docstring_prefix="    ")
-def imload(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH):
-    '''Wrapper on :func:`cv.imread` in the usual IO-blocking way.
-
-    Parameters
-    ----------
-    filepath : str
-        Local path to the file to be loaded
-    flags : int
-        'cv.IMREAD_xxx' flags, if any. See :func:`cv:imread`.
-
-    Returns
-    -------
-    img : numpy.ndarray
-        the loaded image
-
-    See Also
-    --------
-    imload_aio
-        wrapped asynchronous function
-    '''
-    return asyncio.run(imload_aio(filepath, flags=flags))
+    return cv2.imread(filepath, flags=flags)
 
 
-async def imsave_aio(filepath: str, img: np.ndarray, params=None):
-    '''Wrapper on :func:`cv.imwrite` but with asynchronous IO.
-
-    Parameters
-    ----------
-    filepath : str
-        Local path to the file to be saved to
-    img : numpy.ndarray
-        the image to be saved
-    params : int
-        Format-specific parameters, if any. Like those 'cv.IMWRITE_xxx' flags. See :func:`cv.imwrite`.
-
-    See Also
-    --------
-    cv.imwrite
-        wrapped function
-    '''
-
-    ext = path.splitext(filepath)[1]
-    res, contents = cv2.imencode(ext, img, params=params)
-
-    if res is not True:
-        raise ValueError("Unable to encode the input image.")
-
-    buf = np.array(contents.tostring())
-    async with aiofiles.open(filepath, mode='wb') as f:
-        await f.write(buf)
-
-
-@deprecated_func("0.4", suggested_func="imsave_aio", removed_version="1.0", docstring_prefix="    ")
-def imsave(filepath: str, img: np.ndarray, params=None):
+def imsave(filepath: str, img: np.ndarray, params=None, asynchronous : bool = False):
     '''Wrapper on :func:`cv.imwrite` in the usual IO-blocking way.
 
     Parameters
@@ -331,11 +259,28 @@ def imsave(filepath: str, img: np.ndarray, params=None):
         the image to be saved
     params : int
         Format-specific parameters, if any. Like those 'cv.IMWRITE_xxx' flags. See :func:`cv.imwrite`.
+    asynchronous : bool
+        whether or not the file I/O is done asynchronously. If True, you must use keyword 'await'
+        to invoke the function
 
     See Also
     --------
-    imsave_aio
+    cv.imwrite
         wrapped asynchronous function
     '''
 
-    return asyncio.run(imsave_aio(filepath, img, params=params))
+    async def async_func(filepath: str, img: np.ndarray, params=None):
+        ext = path.splitext(filepath)[1]
+        res, contents = cv2.imencode(ext, img, params=params)
+
+        if res is not True:
+            raise ValueError("Unable to encode the input image.")
+
+        buf = np.array(contents.tostring())
+        async with aiofiles.open(filepath, mode='wb') as f:
+            await f.write(buf)
+
+    if asynchronous:
+        return async_func(filepath, img, params=params)
+
+    return cv2.imwrite(filepath, img, params=params)
