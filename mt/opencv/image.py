@@ -267,4 +267,4 @@ async def imsave(filepath: str, img: np.ndarray, params=None, asyn: bool = True)
         raise ValueError("Unable to encode the input image.")
 
     buf = np.array(contents.tostring())
-    return (await write_binary(filepath, buf, asyn=asyn))
+    await write_binary(filepath, buf, asyn=asyn)
