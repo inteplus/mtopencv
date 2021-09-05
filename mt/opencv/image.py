@@ -133,14 +133,14 @@ class Image(object):
         return Image(image, pixel_format=pixel_format, meta=meta)
 
 
-def immload(fp, asynchronous: bool = False):
-    '''Loads an image with metadata.
+def immload(fp, asynch: bool = False):
+    '''An asynch function that loads an image with metadata.
 
     Parameters
     ----------
     fp : object
         string representing a local filepath or an open readable file handle
-    asynchronous : bool
+    asynch : bool
         whether or not the file I/O is done asynchronously. If True, you must use keyword 'await'
         to invoke the function
 
@@ -163,14 +163,14 @@ def immload(fp, asynchronous: bool = False):
             contents = await f.read()
             return Image.from_json(json.loads(contents))
 
-    if asynchronous:
+    if asynch:
         return async_func(fp)
 
     return Image.from_json(json.load(fp))
 
 
-def immsave(image, fp, file_mode: int = 0o664, quality: float = 90, asynchronous: bool = False):
-    '''Saves an image with metadata to file.
+def immsave(image, fp, file_mode: int = 0o664, quality: float = 90, asynch: bool = False):
+    '''An asynch function that saves an image with metadata to file.
 
     Parameters
     ----------
@@ -183,7 +183,7 @@ def immsave(image, fp, file_mode: int = 0o664, quality: float = 90, asynchronous
         given, no setting of file mode will happen.
     quality : float
         percentage of image quality. Default is 90.
-    asynchronous : bool
+    asynch : bool
         whether or not the file I/O is done asynchronously. If True, you must use keyword 'await'
         to invoke the function
 
@@ -208,7 +208,7 @@ def immsave(image, fp, file_mode: int = 0o664, quality: float = 90, asynchronous
         if isinstance(fp, str) and file_mode is not None:
             path.chmod(fp, file_mode)
 
-    func = async_func if asynchronous else sync_func
+    func = async_func if asynch else sync_func
     return func(image, fp, file_mode=file_mode, quality=quality)
 
 

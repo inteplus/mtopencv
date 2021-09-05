@@ -13,7 +13,7 @@ setup(name='mtopencv',
       ],
       install_requires=[
           'aiofiles', # to load/save files asynchronously
-          'mtbase>=1.8',
+          'mtbase>=1.9',
           'mtgeo>=0.7.7',
           #'opencv-python', # let them install opencv-python or opencv-python-headless or whatever
           'ansicolors', # for displaying images on the terminal
