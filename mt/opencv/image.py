@@ -10,10 +10,10 @@ import cv2
 
 from mt import np
 from mt.base import path
-from mt.base.asyn import srun, read_binary, write_binary
+from mt.base.asyn import read_binary, write_binary
 
 
-__all__ = ['PixelFormat', 'Image', 'immload', 'immsave', 'imload', 'imsave']
+__all__ = ['PixelFormat', 'Image', 'immload', 'immsave', 'imload', 'imsave', 'im_float2ubyte', 'im_ubyte2float']
 
 
 
@@ -268,3 +268,45 @@ async def imsave(filepath: str, img: np.ndarray, params=None, asyn: bool = True)
 
     buf = np.array(contents.tostring())
     await write_binary(filepath, buf, asyn=asyn)
+
+
+def im_float2ubyte(img: np.ndarray, is_float01=True):
+    '''Converts an image with a float dtype into an image with an ubyte dtype.
+
+    Parameters
+    ----------
+    img : nd.ndarray
+        the image to be converted
+    is_float01 : bool
+        whether the pixel values of the float image are in range [0,1] (True) or range [-1,1] (False)
+
+    Returns
+    -------
+    nd.ndarray
+        the converted image with ubyte dtype
+    '''
+    if is_float01:
+        return (img*255.0).astype(np.uint8)
+    return ((img*127.5)+127.5).astype(np.uint8)
+
+
+
+
+def im_ubyte2float(img: np.ndarray, is_float01=True):
+    '''Converts an image with an ubyte dtype into an image with a float32 dtype.
+
+    Parameters
+    ----------
+    img : nd.ndarray
+        the image to be converted
+    is_float01 : bool
+        whether the pixel values of the float image are to be in range [0,1] (True) or range [-1,1] (False)
+
+    Returns
+    -------
+    nd.ndarray
+        the converted image with float32 dtype
+    '''
+    if is_float01:
+        return (img/255.0).astype(np.float32)
+    return ((img/127.5)-1).astype(np.float32)
