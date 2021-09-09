@@ -133,7 +133,7 @@ class Image(object):
 
 
 async def immload_asyn(fp, asyn: bool = True):
-    '''An asynch function that loads an image with metadata.
+    '''An asyn function that loads an image with metadata.
 
     Parameters
     ----------
