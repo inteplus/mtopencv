@@ -214,7 +214,7 @@ async def immsave_asyn(image, fp, file_mode: int = 0o664, quality: float = 90, a
         path.chmod(fp, file_mode)
 
 
-def immsave(image, fp, file_mode: int = 0o664, quality: float = 90, asynch: bool = False):
+def immsave(image, fp, file_mode: int = 0o664, quality: float = 90):
     '''Saves an image with metadata to file.
 
     Parameters
@@ -228,9 +228,6 @@ def immsave(image, fp, file_mode: int = 0o664, quality: float = 90, asynch: bool
         given, no setting of file mode will happen.
     quality : float
         percentage of image quality. Default is 90.
-    asynch : bool
-        whether or not the file I/O is done asynchronously. If True, you must use keyword 'await'
-        to invoke the function
 
     Raises
     ------
