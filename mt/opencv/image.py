@@ -12,7 +12,7 @@ from mt import np
 from mt.base import path, aio
 
 
-__all__ = ['PixelFormat', 'Image', 'immload', 'immsave', 'imload', 'imsave', 'im_float2ubyte', 'im_ubyte2float']
+__all__ = ['PixelFormat', 'Image', 'immload_asyn', 'immload', 'immsave_asyn', 'immsave', 'imload', 'imsave', 'im_float2ubyte', 'im_ubyte2float']
 
 
 
@@ -132,16 +132,15 @@ class Image(object):
         return Image(image, pixel_format=pixel_format, meta=meta)
 
 
-def immload(fp, asynch: bool = False):
+async def immload_asyn(fp, asyn: bool = True):
     '''An asynch function that loads an image with metadata.
 
     Parameters
     ----------
     fp : object
         string representing a local filepath or an open readable file handle
-    asynch : bool
-        whether or not the file I/O is done asynchronously. If True, you must use keyword 'await'
-        to invoke the function
+    asyn : bool
+        whether the function is to be invoked asynchronously or synchronously
 
     Returns
     -------
@@ -154,22 +153,69 @@ def immload(fp, asynch: bool = False):
         if an error occured while loading
     '''
 
-    async def async_func(fp):
-        if not isinstance(fp, str):
-            return Image.from_json(json.load(fp))
+    if not asyn or not isinstance(fp, str):
+        return Image.from_json(json.load(fp))
 
-        async with aiofiles.open(fp, mode='rt') as f:
-            contents = await f.read()
-            return Image.from_json(json.loads(contents))
+    json_obj = await aio.json_load(fp, asyn=asyn)
+    return Image.from_json(json_obj)
 
-    if asynch:
-        return async_func(fp)
 
+def immload(fp):
+    '''Loads an image with metadata.
+
+    Parameters
+    ----------
+    fp : object
+        string representing a local filepath or an open readable file handle
+
+    Returns
+    -------
+    Image
+        the loaded image with metadata
+
+    Raises
+    ------
+    OSError
+        if an error occured while loading
+    '''
     return Image.from_json(json.load(fp))
 
 
+async def immsave_asyn(image, fp, file_mode: int = 0o664, quality: float = 90, asyn: bool = True):
+    '''An asyn function that saves an image with metadata to file.
+
+    Parameters
+    ----------
+    imm : Image
+        an image with metadata
+    fp : object
+        string representing a local filepath or an open writable file handle
+    file_mode : int
+        file mode to be set to using :func:`os.chmod`. Only valid if fp is a string. If None is
+        given, no setting of file mode will happen.
+    quality : float
+        percentage of image quality. Default is 90.
+    asyn : bool
+        whether the function is to be invoked asynchronously or synchronously
+
+    Raises
+    ------
+    OSError
+        if an error occured while loading
+    '''
+
+    json_obj = image.to_json(quality=quality)
+    if not asyn or not isinstance(fp, str):
+        json.dump(json_obj, fp, indent=4)
+    else:
+        await aio.json_save(fp, json_obj, indent=4, asyn=asyn)
+
+    if file_mode is not None:  # chmod
+        path.chmod(fp, file_mode)
+
+
 def immsave(image, fp, file_mode: int = 0o664, quality: float = 90, asynch: bool = False):
-    '''An asynch function that saves an image with metadata to file.
+    '''Saves an image with metadata to file.
 
     Parameters
     ----------
@@ -191,24 +237,9 @@ def immsave(image, fp, file_mode: int = 0o664, quality: float = 90, asynch: bool
     OSError
         if an error occured while loading
     '''
-
-    async def async_func(image, fp, file_mode=0o664, quality=90):
-        if not isinstance(fp, str):
-            return json.dump(image.to_json(quality=quality), fp, indent=4)
-
-        async with aiofiles.open(fp, mode='wt') as f:
-            contents = json.dumps(image.to_json(quality=quality), indent=4)
-            await f.write(contents)
-        if file_mode is not None:  # chmod
-            path.chmod(fp, file_mode)
-
-    def sync_func(image, fp, file_mode=0o664, quality=90):
-        json.dump(image.to_json(quality=quality), fp, indent=4)
-        if isinstance(fp, str) and file_mode is not None:
-            path.chmod(fp, file_mode)
-
-    func = async_func if asynch else sync_func
-    return func(image, fp, file_mode=file_mode, quality=quality)
+    json.dump(image.to_json(quality=quality), fp, indent=4)
+    if file_mode is not None:  # chmod
+        path.chmod(fp, file_mode)
 
 
 async def imload(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH, asyn: bool = True):
