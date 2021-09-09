@@ -9,8 +9,7 @@ _tj = tj.TurboJPEG()
 import cv2
 
 from mt import np
-from mt.base import path
-from mt.base.asyn import read_binary, write_binary
+from mt.base import path, aio
 
 
 __all__ = ['PixelFormat', 'Image', 'immload', 'immsave', 'imload', 'imsave', 'im_float2ubyte', 'im_ubyte2float']
@@ -235,7 +234,7 @@ async def imload(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH,
         wrapped function
     '''
 
-    contents = await read_binary(filepath, asyn=asyn)
+    contents = await aio.read_binary(filepath, asyn=asyn)
     buf = np.asarray(bytearray(contents), dtype=np.uint8)
     return cv2.imdecode(buf, flags=flags)
 
@@ -267,7 +266,7 @@ async def imsave(filepath: str, img: np.ndarray, params=None, asyn: bool = True)
         raise ValueError("Unable to encode the input image.")
 
     buf = np.array(contents.tostring())
-    await write_binary(filepath, buf, asyn=asyn)
+    await aio.write_binary(filepath, buf, asyn=asyn)
 
 
 def im_float2ubyte(img: np.ndarray, is_float01=True):
