@@ -153,9 +153,8 @@ async def immload_asyn(fp, asyn: bool = True):
         if an error occured while loading
     '''
 
-    if not asyn or not isinstance(fp, str):
+    if not isinstance(fp, str):
         return Image.from_json(json.load(fp))
-
     json_obj = await aio.json_load(fp, asyn=asyn)
     return Image.from_json(json_obj)
 
@@ -205,13 +204,13 @@ async def immsave_asyn(image, fp, file_mode: int = 0o664, quality: float = 90, a
     '''
 
     json_obj = image.to_json(quality=quality)
-    if not asyn or not isinstance(fp, str):
-        json.dump(json_obj, fp, indent=4)
-    else:
-        await aio.json_save(fp, json_obj, indent=4, asyn=asyn)
 
-    if file_mode is not None:  # chmod
-        path.chmod(fp, file_mode)
+    if isinstance(fp, str):
+        await aio.json_save(fp, json_obj, indent=4, asyn=asyn)
+        if file_mode is not None:  # chmod
+            path.chmod(fp, file_mode)
+    else:
+        json.dump(json_obj, fp, indent=4)
 
 
 def immsave(image, fp, file_mode: int = 0o664, quality: float = 90):
