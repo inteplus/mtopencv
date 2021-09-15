@@ -177,7 +177,7 @@ def immload(fp):
     OSError
         if an error occured while loading
     '''
-    return Image.from_json(json.load(fp))
+    return aio.srun(immload_asyn, fp)
 
 
 async def immsave_asyn(image, fp, file_mode: int = 0o664, quality: float = 90, asyn: bool = True):
@@ -233,9 +233,7 @@ def immsave(image, fp, file_mode: int = 0o664, quality: float = 90):
     OSError
         if an error occured while loading
     '''
-    json.dump(image.to_json(quality=quality), fp, indent=4)
-    if file_mode is not None:  # chmod
-        path.chmod(fp, file_mode)
+    return aio.srun(immsave_asyn, image, fp, file_mode=file_mode, quality=quality)
 
 
 async def imload(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH, asyn: bool = True):
