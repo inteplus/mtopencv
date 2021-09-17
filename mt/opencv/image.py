@@ -39,7 +39,7 @@ class Image(object):
     meta : dict
         A JSON-like object. It holds additional keyword parameters associated with the image.
     '''
-    
+
     def __init__(self, image, pixel_format='rgb', meta={}):
         self.image = np.ascontiguousarray(image) # need to be contiguous
         self.pixel_format = pixel_format
@@ -132,15 +132,16 @@ class Image(object):
         return Image(image, pixel_format=pixel_format, meta=meta)
 
 
-async def immload_asyn(fp, asyn: bool = True):
+async def immload_asyn(fp, context_vars: dict = {}):
     '''An asyn function that loads an image with metadata.
 
     Parameters
     ----------
     fp : object
         string representing a local filepath or an open readable file handle
-    asyn : bool
-        whether the function is to be invoked asynchronously or synchronously
+    context_vars : dict
+        a dictionary of context variables within which the function runs. It must include
+        `context_vars['async']` to tell whether to invoke the function asynchronously or not.
 
     Returns
     -------
@@ -155,7 +156,7 @@ async def immload_asyn(fp, asyn: bool = True):
 
     if not isinstance(fp, str):
         return Image.from_json(json.load(fp))
-    json_obj = await aio.json_load(fp, asyn=asyn)
+    json_obj = await aio.json_load(fp, context_vars=context_vars)
     return Image.from_json(json_obj)
 
 
@@ -180,7 +181,7 @@ def immload(fp):
     return aio.srun(immload_asyn, fp)
 
 
-async def immsave_asyn(image, fp, file_mode: int = 0o664, quality: float = 90, asyn: bool = True):
+async def immsave_asyn(image, fp, file_mode: int = 0o664, quality: float = 90, context_vars: dict = {}):
     '''An asyn function that saves an image with metadata to file.
 
     Parameters
@@ -194,8 +195,9 @@ async def immsave_asyn(image, fp, file_mode: int = 0o664, quality: float = 90, a
         given, no setting of file mode will happen.
     quality : float
         percentage of image quality. Default is 90.
-    asyn : bool
-        whether the function is to be invoked asynchronously or synchronously
+    context_vars : dict
+        a dictionary of context variables within which the function runs. It must include
+        `context_vars['async']` to tell whether to invoke the function asynchronously or not.
 
     Raises
     ------
@@ -206,7 +208,7 @@ async def immsave_asyn(image, fp, file_mode: int = 0o664, quality: float = 90, a
     json_obj = image.to_json(quality=quality)
 
     if isinstance(fp, str):
-        await aio.json_save(fp, json_obj, indent=4, asyn=asyn)
+        await aio.json_save(fp, json_obj, indent=4, context_vars=context_vars)
         if file_mode is not None:  # chmod
             path.chmod(fp, file_mode)
     else:
@@ -236,7 +238,7 @@ def immsave(image, fp, file_mode: int = 0o664, quality: float = 90):
     return aio.srun(immsave_asyn, image, fp, file_mode=file_mode, quality=quality)
 
 
-async def imload(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH, asyn: bool = True):
+async def imload(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH, context_vars: dict = {}):
     '''An asyn function wrapping on :func:`cv.imread`.
 
     Parameters
@@ -245,8 +247,9 @@ async def imload(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH,
         Local path to the file to be loaded
     flags : int
         'cv.IMREAD_xxx' flags, if any. See :func:`cv:imread`.
-    asyn : bool
-        whether the function is to be invoked asynchronously or synchronously
+    context_vars : dict
+        a dictionary of context variables within which the function runs. It must include
+        `context_vars['async']` to tell whether to invoke the function asynchronously or not.
 
     Returns
     -------
@@ -259,12 +262,12 @@ async def imload(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH,
         wrapped function
     '''
 
-    contents = await aio.read_binary(filepath, asyn=asyn)
+    contents = await aio.read_binary(filepath, context_vars=context_vars)
     buf = np.asarray(bytearray(contents), dtype=np.uint8)
     return cv2.imdecode(buf, flags=flags)
 
 
-async def imsave(filepath: str, img: np.ndarray, params=None, asyn: bool = True):
+async def imsave(filepath: str, img: np.ndarray, params=None, context_vars: dict = {}):
     '''An asyn function wrapping on :func:`cv.imwrite`.
 
     Parameters
@@ -275,8 +278,9 @@ async def imsave(filepath: str, img: np.ndarray, params=None, asyn: bool = True)
         the image to be saved
     params : int
         Format-specific parameters, if any. Like those 'cv.IMWRITE_xxx' flags. See :func:`cv.imwrite`.
-    asyn : bool
-        whether the function is to be invoked asynchronously or synchronously
+    context_vars : dict
+        a dictionary of context variables within which the function runs. It must include
+        `context_vars['async']` to tell whether to invoke the function asynchronously or not.
 
     See Also
     --------
@@ -291,7 +295,7 @@ async def imsave(filepath: str, img: np.ndarray, params=None, asyn: bool = True)
         raise ValueError("Unable to encode the input image.")
 
     buf = np.array(contents.tostring())
-    await aio.write_binary(filepath, buf, asyn=asyn)
+    await aio.write_binary(filepath, buf, context_vars=context_vars)
 
 
 def im_float2ubyte(img: np.ndarray, is_float01=True):

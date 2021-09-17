@@ -55,9 +55,9 @@ def view(image, max_width=640, as_ansi=True):
         cv.imshow('image', image)
         cv.waitKey(0)
 
-async def main(args):
+async def main(args, context_vars: dict = {}):
     if args.imm_file.endswith('.imm'):
-        imm = await cv.immload_asyn(args.imm_file, asyn=True)
+        imm = await cv.immload_asyn(args.imm_file, context_vars=context_vars)
         print("Image path: {}".format(args.imm_file))
         print("Pixel format: {}".format(imm.pixel_format))
         print("Resolution: {}x{}".format(imm.image.shape[1], imm.image.shape[0]))
@@ -72,7 +72,7 @@ async def main(args):
         elif args.imm_file.lower().endswith('.jpeg'):
             image_type = 'jpg'
         else:
-            image_type_detail = await filetype.image_match(args.imm_file, asynchronous=True)
+            image_type_detail = await filetype.image_match_asyn(args.imm_file, context_vars=context_vars)
             image_type = None if image_type_detail is None else image_type_detail.extension
         if image_type is None:
             print("Not an image file: {}".format(args.imm_file))
@@ -92,4 +92,4 @@ if __name__ == '__main__':
     parser.add_argument('imm_file', type=str,
                         help="The file to view.")
     args = parser.parse_args()
-    asyncio.run(main(args))
+    asyncio.run(main(args, context_vars={'async': True}))
