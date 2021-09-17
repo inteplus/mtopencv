@@ -181,7 +181,7 @@ def immload(fp):
     return aio.srun(immload_asyn, fp)
 
 
-async def immsave_asyn(image, fp, file_mode: int = 0o664, quality: float = 90, context_vars: dict = {}):
+async def immsave_asyn(image, fp, file_mode: int = 0o664, quality: float = 90, context_vars: dict = {}, file_write_delayed: bool = False):
     '''An asyn function that saves an image with metadata to file.
 
     Parameters
@@ -198,6 +198,15 @@ async def immsave_asyn(image, fp, file_mode: int = 0o664, quality: float = 90, c
     context_vars : dict
         a dictionary of context variables within which the function runs. It must include
         `context_vars['async']` to tell whether to invoke the function asynchronously or not.
+    file_write_delayed : bool
+        Only valid in asynchronous mode. If True, wraps the file write task into a future and
+        returns the future. In all other cases, proceeds as usual.
+
+    Returns
+    -------
+    asyncio.Future or object
+        either a future or whatever :func:`json.dump` returns, depending on whether the file write
+        task is delayed or not
 
     Raises
     ------
@@ -208,11 +217,11 @@ async def immsave_asyn(image, fp, file_mode: int = 0o664, quality: float = 90, c
     json_obj = image.to_json(quality=quality)
 
     if isinstance(fp, str):
-        await aio.json_save(fp, json_obj, indent=4, context_vars=context_vars)
-        if file_mode is not None:  # chmod
-            path.chmod(fp, file_mode)
+        retval = await aio.json_save(fp, json_obj, indent=4, file_mode=file_mode, context_vars=context_vars, file_write_delayed=file_write_delayed)
     else:
-        json.dump(json_obj, fp, indent=4)
+        retval = json.dump(json_obj, fp, indent=4)
+
+    return retval
 
 
 def immsave(image, fp, file_mode: int = 0o664, quality: float = 90):
@@ -267,7 +276,7 @@ async def imload(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH,
     return cv2.imdecode(buf, flags=flags)
 
 
-async def imsave(filepath: str, img: np.ndarray, params=None, context_vars: dict = {}):
+async def imsave(filepath: str, img: np.ndarray, params=None, file_mode: int = 0o664, context_vars: dict = {}, file_write_delayed: bool = False):
     '''An asyn function wrapping on :func:`cv.imwrite`.
 
     Parameters
@@ -278,9 +287,22 @@ async def imsave(filepath: str, img: np.ndarray, params=None, context_vars: dict
         the image to be saved
     params : int
         Format-specific parameters, if any. Like those 'cv.IMWRITE_xxx' flags. See :func:`cv.imwrite`.
+    file_mode : int
+        file mode to be set to using :func:`os.chmod`. Only valid if fp is a string. If None is
+        given, no setting of file mode will happen.
     context_vars : dict
         a dictionary of context variables within which the function runs. It must include
         `context_vars['async']` to tell whether to invoke the function asynchronously or not.
+    file_write_delayed : bool
+        Only valid in asynchronous mode. If True, wraps the file write task into a future and
+        returns the future. In all other cases, proceeds as usual.
+
+    Returns
+    -------
+    asyncio.Future or int
+        either a future or the number of bytes written, depending on whether the file write
+        task is delayed or not
+
 
     See Also
     --------
@@ -295,7 +317,7 @@ async def imsave(filepath: str, img: np.ndarray, params=None, context_vars: dict
         raise ValueError("Unable to encode the input image.")
 
     buf = np.array(contents.tostring())
-    await aio.write_binary(filepath, buf, context_vars=context_vars)
+    await aio.write_binary(filepath, buf, file_mode=file_mode, context_vars=context_vars, file_write_delayed=file_write_delayed)
 
 
 def im_float2ubyte(img: np.ndarray, is_float01=True):
