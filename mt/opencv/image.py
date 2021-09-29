@@ -317,7 +317,7 @@ async def imsave(filepath: str, img: np.ndarray, params=None, file_mode: int = 0
         raise ValueError("Unable to encode the input image.")
 
     buf = np.array(contents.tostring())
-    await aio.write_binary(filepath, buf, file_mode=file_mode, context_vars=context_vars, file_write_delayed=file_write_delayed)
+    return await aio.write_binary(filepath, buf, file_mode=file_mode, context_vars=context_vars, file_write_delayed=file_write_delayed)
 
 
 def im_float2ubyte(img: np.ndarray, is_float01=True):
