@@ -6,12 +6,37 @@ import cv2 as cv
 from mt.base.terminal import stty_imgres
 
 
-__all__ = ['to_ansi']
+__all__ = ['to_ansi', 'get_screen_imgres']
 
 
 def get_pixel(col):
     '''Converts a pixel into an ANSI letter.'''
     return color(' ', bg=f'rgb({int(col[0])}, {int(col[1])}, {int(col[2])})')
+
+
+def get_screen_imgres(margin:int = 7) -> list:
+    '''Gets the image resolution that fits the current screen, with some margin.
+
+    Parameters
+    ----------
+    margin : int
+        Only valid if imgres is None. The argument specifies the number of letters in both width and height to be preserved as margin
+
+    Returns
+    -------
+    imgres : list
+        pair of [max_width, max_height] defining the maximum resolution that fits the current screen
+    '''
+
+    imgres = stty_imgres()
+
+    # reduce a bit if we can
+    for i in range(2):
+        if imgres[i] > margin*2:
+            imgres[i] -= margin
+
+    return imgres
+
 
 
 def to_ansi(img, imgres=None, margin=7):
@@ -43,12 +68,7 @@ def to_ansi(img, imgres=None, margin=7):
     if imgres is None:
         img_imgres = [img.shape[1], img.shape[0]]
 
-        imgres = stty_imgres()
-
-        # reduce a bit if we can
-        for i in range(2):
-            if imgres[i] > margin*2:
-                imgres[i] -= margin
+        imgres = get_screen_imgres(margin=margin)
 
         # width:height aspect ratio
         ratio = img_imgres[0]*2/img_imgres[1]
