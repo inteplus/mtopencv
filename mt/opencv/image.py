@@ -156,7 +156,13 @@ async def immload_asyn(fp, context_vars: dict = {}):
 
     if not isinstance(fp, str):
         return Image.from_json(json.load(fp))
-    json_obj = await aio.json_load(fp, context_vars=context_vars)
+    try:
+        json_obj = await aio.json_load(fp, context_vars=context_vars)
+    except json.decoder.JSONDecodeError:
+        if isinstance(fp, str):
+            raise OSError("Unable to json-load filepath '{}'. It may be corrupted.".format(fp))
+        else:
+            raise OSError("Unable to json-load. The file may be corrupted.")
     return Image.from_json(json_obj)
 
 
