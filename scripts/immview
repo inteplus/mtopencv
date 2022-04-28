@@ -80,7 +80,30 @@ async def main(args, context_vars: dict = {}):
             print("Image path: {}".format(args.imm_file))
             print("File type: {}".format(image_type))
             image = await cv.imload(args.imm_file, flags=cv.IMREAD_UNCHANGED, context_vars=context_vars)
+            if image_type.startswith('jp'):
+                if image.shape[2] == 4:
+                    pixel_format = 'bgra'
+                elif image.shape[2] == 3:
+                    pixel_format = 'bgr'
+                elif image.shape[2] == 1:
+                    pixel_format = 'gray'
+                else:
+                    pixel_format = None
+            elif image_type == 'png':
+                if image.shape[2] == 4:
+                    pixel_format = 'rgba'
+                elif image.shape[2] == 3:
+                    pixel_format = 'rgb'
+                elif image.shape[2] == 1:
+                    pixel_format = 'gray'
+                else:
+                    pixel_format = None
+            else:
+                pixel_format = None
             print("Resolution: {}x{}".format(image.shape[1], image.shape[0]))
+            if pixel_format is not None:
+                imm = cv.Image(image, pixel_format=pixel_format)
+                image = get_image(imm)
             view(image, max_width=args.max_width, as_ansi=not args.use_highgui)
 
 if __name__ == '__main__':
