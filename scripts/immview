@@ -6,6 +6,7 @@ from mt import cv, np
 from mt.base import filetype
 
 def get_image(imm):
+    '''Produces BGR image for display using OpenCV.'''
     if imm.pixel_format in ['gray', 'bgr']:
         return imm.image
 
@@ -43,6 +44,7 @@ def get_image(imm):
     raise ValueError("Imm with pixel format '{}' is not supported.".format(imm.pixel_format))
 
 def view(image, max_width=640, as_ansi=True):
+    '''Displays a BGR image.'''
     if max_width < image.shape[1]:
         height = image.shape[0]*max_width//image.shape[1]
         image = cv.resize(image, dsize=(max_width, height))
