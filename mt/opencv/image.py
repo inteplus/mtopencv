@@ -309,6 +309,10 @@ async def imsave(filepath: str, img: np.ndarray, params=None, file_mode: int = 0
         either a future or the number of bytes written, depending on whether the file write
         task is delayed or not
 
+    Note
+    ----
+    Do not use this function to write in PNG format. OpenCV would happily assume the input is BGR
+    or BGRA and then write to PNG under that assumption, which often results in a wrong order.
 
     See Also
     --------
