@@ -105,6 +105,54 @@ class Image(object):
 
         return json_obj
 
+    def to_hdf5(self, h5_group, quality=90):
+        '''Dumps the image to a h5py.Group object.
+
+        Parameters
+        ----------
+        h5_group : h5py.Group
+            a :class:`h5py.Group` object to write to
+        quality : int
+            percentage of image quality. Default is 90.
+
+        Raises
+        ------
+        ImportError
+            if h5py is not importable
+        ValueError
+            if the provided group is not of type :class:`h5py.Group`
+        '''
+
+        try:
+            import h5py
+        except ImportError:
+            raise ImportError("Unable to import h5py. You need to pip install it for "
+                              "mt.opencv.Image to save to HDF5 format.")
+
+        if not isinstance(h5_group, h5py.Group):
+            raise ValueError(
+                "The provided group is not a h5py.Group instance.")
+
+        h5_group.attrs['pixel_format'] = self.pixel_format
+        h5_group.attrs['height'] = self.image.shape[0]
+        h5_group.attrs['width'] = self.image.shape[1]
+        h5_group.attrs['meta'] = json.dumps(self.meta)
+
+        # image
+        tj_params = PixelFormat[self.pixel_format]
+        img_bytes = _tj.encode(self.image, quality=quality,
+                               pixel_format=tj_params[0], jpeg_subsample=tj_params[2])
+        h5_group.create_dataset('image', data=np.void(img_bytes))
+
+        if self.pixel_format != 'gray':
+            a_id = self.pixel_format.find('a')
+            if a_id >= 0:  # has alpha channel
+                alpha_image = np.ascontiguousarray(
+                    self.image[:, :, a_id:a_id+1])
+                img_bytes = _tj.encode(
+                    alpha_image, quality=quality, pixel_format=tj.TJPF_GRAY, jpeg_subsample=tj.TJSAMP_GRAY)
+                h5_group.create_dataset('alpha', data=np.void(img_bytes))
+
     @staticmethod
     def from_json(json_obj):
         '''Loads the image from a JSON-like object produced by :func:`dumps`.
