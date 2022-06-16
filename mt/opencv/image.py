@@ -1,19 +1,18 @@
 '''An self-contained image.'''
 
 
+from mt.base import path, aio
+from mt import np
+import cv2
 import aiofiles
 import base64
 import json
 import turbojpeg as tj
 _tj = tj.TurboJPEG()
-import cv2
-
-from mt import np
-from mt.base import path, aio
 
 
-__all__ = ['PixelFormat', 'Image', 'immload_asyn', 'immload', 'immsave_asyn', 'immsave', 'imload', 'imsave', 'im_float2ubyte', 'im_ubyte2float']
-
+__all__ = ['PixelFormat', 'Image', 'immload_asyn', 'immload', 'immsave_asyn',
+           'immsave', 'imload', 'imsave', 'im_float2ubyte', 'im_ubyte2float']
 
 
 PixelFormat = {
@@ -41,7 +40,7 @@ class Image(object):
     '''
 
     def __init__(self, image, pixel_format='rgb', meta={}):
-        self.image = np.ascontiguousarray(image) # need to be contiguous
+        self.image = np.ascontiguousarray(image)  # need to be contiguous
         self.pixel_format = pixel_format
         self.meta = meta
 
@@ -52,14 +51,17 @@ class Image(object):
         '''Checks for data consistency, raising a ValueError if something has gone wrong.'''
         if len(self.image.shape) == 2:
             if self.pixel_format != 'gray':
-                raise ValueError("Pixel format is not 'gray' but image has only one channel.")
+                raise ValueError(
+                    "Pixel format is not 'gray' but image has only one channel.")
             self.image = self.image.reshape(self.image.shape + (1,))
         elif len(self.image.shape) == 3:
             desired_nchannels = PixelFormat[self.pixel_format][1]
             if self.image.shape[2] != desired_nchannels:
-                raise ValueError("Unexpected number of channels {}. It should be {} for pixel format '{}'.".format(self.image.shape[2], desired_nchannels, self.pixel_format))
+                raise ValueError("Unexpected number of channels {}. It should be {} for pixel format '{}'.".format(
+                    self.image.shape[2], desired_nchannels, self.pixel_format))
         else:
-            raise ValueError("Unexpected image shape {}. It must have 2 or 3 dimensions.".format(self.image.shape))
+            raise ValueError(
+                "Unexpected image shape {}. It must have 2 or 3 dimensions.".format(self.image.shape))
 
     # ---- serialisation -----
 
@@ -86,15 +88,18 @@ class Image(object):
 
         # image
         tj_params = PixelFormat[self.pixel_format]
-        img_bytes = _tj.encode(self.image, quality=quality, pixel_format=tj_params[0], jpeg_subsample=tj_params[2])
+        img_bytes = _tj.encode(self.image, quality=quality,
+                               pixel_format=tj_params[0], jpeg_subsample=tj_params[2])
         encoded = base64.b64encode(img_bytes)
         json_obj['image'] = encoded.decode('ascii')
 
         if self.pixel_format != 'gray':
             a_id = self.pixel_format.find('a')
-            if a_id >= 0: # has alpha channel
-                alpha_image = np.ascontiguousarray(self.image[:,:,a_id:a_id+1])
-                img_bytes = _tj.encode(alpha_image, quality=quality, pixel_format=tj.TJPF_GRAY, jpeg_subsample=tj.TJSAMP_GRAY)
+            if a_id >= 0:  # has alpha channel
+                alpha_image = np.ascontiguousarray(
+                    self.image[:, :, a_id:a_id+1])
+                img_bytes = _tj.encode(
+                    alpha_image, quality=quality, pixel_format=tj.TJPF_GRAY, jpeg_subsample=tj.TJSAMP_GRAY)
                 encoded = base64.b64encode(img_bytes)
                 json_obj['alpha'] = encoded.decode('ascii')
 
@@ -124,10 +129,10 @@ class Image(object):
 
         if pixel_format != 'gray':
             a_id = pixel_format.find('a')
-            if a_id >= 0: # has alpha channel
+            if a_id >= 0:  # has alpha channel
                 decoded = base64.b64decode(json_obj['alpha'])
                 alpha_image = _tj.decode(decoded, pixel_format=tj.TJPF_GRAY)
-                image[:,:,a_id:a_id+1] = alpha_image
+                image[:, :, a_id:a_id+1] = alpha_image
 
         return Image(image, pixel_format=pixel_format, meta=meta)
 
@@ -160,7 +165,8 @@ async def immload_asyn(fp, context_vars: dict = {}):
         json_obj = await aio.json_load(fp, context_vars=context_vars)
     except json.decoder.JSONDecodeError:
         if isinstance(fp, str):
-            raise OSError("Unable to json-load filepath '{}'. It may be corrupted.".format(fp))
+            raise OSError(
+                "Unable to json-load filepath '{}'. It may be corrupted.".format(fp))
         else:
             raise OSError("Unable to json-load. The file may be corrupted.")
     return Image.from_json(json_obj)
@@ -350,8 +356,6 @@ def im_float2ubyte(img: np.ndarray, is_float01=True):
     return ((img*127.5)+127.5).astype(np.uint8)
 
 
-
-
 def im_ubyte2float(img: np.ndarray, is_float01=True):
     '''Converts an image with an ubyte dtype into an image with a float32 dtype.
 
@@ -370,3 +374,6 @@ def im_ubyte2float(img: np.ndarray, is_float01=True):
     if is_float01:
         return (img/255.0).astype(np.float32)
     return ((img/127.5)-1).astype(np.float32)
+
+
+# MT-TODO: implement Image.to_hdf5(), Image.from_hdf5() and adjust immload_asyn() and immsave_asyn() to deal with HDF5 files
