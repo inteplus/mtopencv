@@ -12,10 +12,11 @@ setup(name='mtopencv',
           'scripts/immview',
       ],
       install_requires=[
-          'mtbase>=2.10',
-          'mtgeo>=0.7.7',
-          #'opencv-python', # let them install opencv-python or opencv-python-headless or whatever
-          'ansicolors', # for displaying images on the terminal
-          'pyturbojpeg', # for encoding/decoding images
+          # 'h5py>=3', # for pdh5 file format. Lazy import because TX2 may not need it.
+          # 'opencv-python', # let them install opencv-python or opencv-python-headless or whatever
+          'ansicolors',  # for displaying images on the terminal
+          'pyturbojpeg',  # for encoding/decoding images
+          'mtbase>=2.16',
+          'mtgeo>=0.9',
       ]
       )
