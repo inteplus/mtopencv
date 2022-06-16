@@ -184,6 +184,37 @@ class Image(object):
 
         return Image(image, pixel_format=pixel_format, meta=meta)
 
+    @staticmethod
+    def from_hdf5(h5_group):
+        '''Loads the image from an HDF5 group.
+
+        Parameters
+        ----------
+        h5_group : h5py.Group
+            a :class:`h5py.Group` object to read from
+
+        Returns
+        -------
+        Image
+            the loaded image with metadata
+        '''
+
+        # meta
+        pixel_format = h5_group.attrs['pixel_format']
+        meta = json.loads(h5_group.attrs['meta'])
+
+        decoded = h5_group['image'].tobytes()
+        image = _tj.decode(decoded, pixel_format=PixelFormat[pixel_format][0])
+
+        if pixel_format != 'gray':
+            a_id = pixel_format.find('a')
+            if a_id >= 0:  # has alpha channel
+                decoded = h5_group['alpha'].tobytes()
+                alpha_image = _tj.decode(decoded, pixel_format=tj.TJPF_GRAY)
+                image[:, :, a_id:a_id+1] = alpha_image
+
+        return Image(image, pixel_format=pixel_format, meta=meta)
+
 
 async def immload_asyn(fp, context_vars: dict = {}):
     '''An asyn function that loads an image with metadata.
