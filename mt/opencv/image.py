@@ -11,8 +11,9 @@ import turbojpeg as tj
 _tj = tj.TurboJPEG()
 
 
-__all__ = ['PixelFormat', 'Image', 'immload_asyn', 'immload', 'immsave_asyn',
-           'immsave', 'imload', 'imsave', 'im_float2ubyte', 'im_ubyte2float']
+__all__ = ['PixelFormat', 'Image', 'immload_asyn', 'immload', 'immload_header_asyn',
+           'immload_header', 'immsave_asyn', 'immsave', 'imload', 'imsave', 'im_float2ubyte',
+           'im_ubyte2float']
 
 
 PixelFormat = {
@@ -123,11 +124,7 @@ class Image(object):
             if the provided group is not of type :class:`h5py.Group`
         '''
 
-        try:
-            import h5py
-        except ImportError:
-            raise ImportError("Unable to import h5py. You need to pip install it for "
-                              "mt.opencv.Image to save to HDF5 format.")
+        import h5py
 
         if not isinstance(h5_group, h5py.Group):
             raise ValueError(
@@ -142,7 +139,7 @@ class Image(object):
         tj_params = PixelFormat[self.pixel_format]
         img_bytes = _tj.encode(self.image, quality=quality,
                                pixel_format=tj_params[0], jpeg_subsample=tj_params[2])
-        h5_group.create_dataset('image', data=np.void(img_bytes))
+        h5_group.attrs['image'] = np.void(img_bytes)
 
         if self.pixel_format != 'gray':
             a_id = self.pixel_format.find('a')
@@ -151,7 +148,7 @@ class Image(object):
                     self.image[:, :, a_id:a_id+1])
                 img_bytes = _tj.encode(
                     alpha_image, quality=quality, pixel_format=tj.TJPF_GRAY, jpeg_subsample=tj.TJSAMP_GRAY)
-                h5_group.create_dataset('alpha', data=np.void(img_bytes))
+                h5_group.attrs['alpha'] = np.void(img_bytes)
 
     @staticmethod
     def from_json(json_obj):
@@ -199,17 +196,23 @@ class Image(object):
             the loaded image with metadata
         '''
 
+        import h5py
+
+        if not isinstance(h5_group, h5py.Group):
+            raise ValueError(
+                "The provided group is not a h5py.Group instance.")
+
         # meta
         pixel_format = h5_group.attrs['pixel_format']
         meta = json.loads(h5_group.attrs['meta'])
 
-        decoded = h5_group['image'].tobytes()
+        decoded = h5_group.attrs['image'].tobytes()
         image = _tj.decode(decoded, pixel_format=PixelFormat[pixel_format][0])
 
         if pixel_format != 'gray':
             a_id = pixel_format.find('a')
             if a_id >= 0:  # has alpha channel
-                decoded = h5_group['alpha'].tobytes()
+                decoded = h5_group.attrs['alpha'].tobytes()
                 alpha_image = _tj.decode(decoded, pixel_format=tj.TJPF_GRAY)
                 image[:, :, a_id:a_id+1] = alpha_image
 
@@ -222,7 +225,7 @@ async def immload_asyn(fp, context_vars: dict = {}):
     Parameters
     ----------
     fp : object
-        string representing a local filepath or an open readable file handle
+        string representing a local filepath or an open readable file-like object
     context_vars : dict
         a dictionary of context variables within which the function runs. It must include
         `context_vars['async']` to tell whether to invoke the function asynchronously or not.
@@ -236,8 +239,24 @@ async def immload_asyn(fp, context_vars: dict = {}):
     ------
     OSError
         if an error occured while loading
+
+    Notes
+    -----
+    As of 2022/06/18, the file can be in HDF5 format or JSON format.
     '''
 
+    # try with h5py
+    try:
+        import h5py
+        try:
+            f = h5py.File(fp, 'r')
+            return Image.from_hdf5(f)
+        except OSError:
+            pass
+    except ImportError:
+        pass
+
+    # try with json
     if not isinstance(fp, str):
         return Image.from_json(json.load(fp))
     try:
@@ -272,32 +291,137 @@ def immload(fp):
     return aio.srun(immload_asyn, fp)
 
 
-async def immsave_asyn(image, fp, file_mode: int = 0o664, quality: float = 90, context_vars: dict = {}, file_write_delayed: bool = False):
+async def immload_header_asyn(fp, context_vars: dict = {}):
+    '''An asyn function that loads the header of an image with metadata.
+
+    Parameters
+    ----------
+    fp : object
+        string representing a local filepath or an open readable file-like object
+    context_vars : dict
+        a dictionary of context variables within which the function runs. It must include
+        `context_vars['async']` to tell whether to invoke the function asynchronously or not.
+
+    Returns
+    -------
+    dict
+        a dictionary containing keys `['pixel_format', 'width', 'height', meta']`
+
+    Raises
+    ------
+    OSError
+        if an error occured while loading
+
+    Notes
+    -----
+    As of 2022/06/18, the file can be in HDF5 format or JSON format.
+    '''
+
+    # try with h5py
+    try:
+        import h5py
+        try:
+            f = h5py.File(fp, 'r')
+            res = {
+                'pixel_format': f.attrs['pixel_format'],
+                'width': f.attrs['width'],
+                'height': f.attrs['height'],
+                'meta': json.loads(f.attrs['meta']),
+            }
+            return res
+        except OSError:
+            pass
+    except ImportError:
+        pass
+
+    # try with json
+    if not isinstance(fp, str):
+        json_obj = json.load(fp)
+    else:
+        try:
+            json_obj = await aio.json_load(fp, context_vars=context_vars)
+        except json.decoder.JSONDecodeError:
+            if isinstance(fp, str):
+                raise OSError(
+                    "Unable to json-load filepath '{}'. It may be corrupted.".format(fp))
+            else:
+                raise OSError(
+                    "Unable to json-load. The file may be corrupted.")
+
+    res = {
+        'pixel_format': json_obj['pixel_format'],
+        'width': json_obj['width'],
+        'height': json_obj['height'],
+        'meta': json_obj['meta'],
+    }
+    return res
+
+
+def immload_header(fp):
+    '''Loads the header of an image with metadata.
+
+    Parameters
+    ----------
+    fp : object
+        string representing a local filepath or an open readable file-like object
+    context_vars : dict
+        a dictionary of context variables within which the function runs. It must include
+        `context_vars['async']` to tell whether to invoke the function asynchronously or not.
+
+    Returns
+    -------
+    dict
+        a dictionary containing keys `['pixel_format', 'width', 'height', meta']`
+
+    Raises
+    ------
+    OSError
+        if an error occured while loading
+
+    Notes
+    -----
+    As of 2022/06/18, the file can be in HDF5 format or JSON format.
+    '''
+    return aio.srun(immload_header_asyn, fp)
+
+
+async def immsave_asyn(
+        image: Image,
+        fp: str,
+        file_mode: int = 0o664,
+        quality: float = 90,
+        context_vars: dict = {},
+        file_format: str = 'hdf5',
+        file_write_delayed: bool = False):
     '''An asyn function that saves an image with metadata to file.
 
     Parameters
     ----------
     imm : Image
         an image with metadata
-    fp : object
-        string representing a local filepath or an open writable file handle
+    fp : str
+        local filepath to save the content to. If the file format is 'json', fp can also be a
+        file-like object.
     file_mode : int
-        file mode to be set to using :func:`os.chmod`. Only valid if fp is a string. If None is
-        given, no setting of file mode will happen.
+        file mode to be set to using :func:`os.chmod`. If None is given, no setting of file mode
+        will happen.
     quality : float
         percentage of image quality. Default is 90.
     context_vars : dict
         a dictionary of context variables within which the function runs. It must include
         `context_vars['async']` to tell whether to invoke the function asynchronously or not.
+    file_format : {'json', 'hdf5'}
+        format to be used for saving the content.
     file_write_delayed : bool
-        Only valid in asynchronous mode. If True, wraps the file write task into a future and
-        returns the future. In all other cases, proceeds as usual.
+        Only valid in asynchronous mode and the format is 'json'. If True, wraps the file write
+        task into a future and returns the future. In all other cases, proceeds as usual.
 
     Returns
     -------
     asyncio.Future or object
-        either a future or whatever :func:`json.dump` returns, depending on whether the file write
-        task is delayed or not
+        In the case of format 'json', it is either a future or whatever :func:`json.dump` returns,
+        depending on whether the file write task is delayed or not. In the case format 'hdf5', it
+        is whatever function :func:`mt.base.aio.files.safe_chmod` returns.
 
     Raises
     ------
@@ -305,17 +429,33 @@ async def immsave_asyn(image, fp, file_mode: int = 0o664, quality: float = 90, c
         if an error occured while loading
     '''
 
-    json_obj = image.to_json(quality=quality)
+    if file_format == 'hdf5':
+        try:
+            import h5py
+        except ImportError:
+            raise ImportError("Unable to import h5py. You need to pip install it for "
+                              "mt.opencv.Image to save to HDF5 format.")
 
-    if isinstance(fp, str):
-        retval = await aio.json_save(fp, json_obj, indent=4, file_mode=file_mode, context_vars=context_vars, file_write_delayed=file_write_delayed)
+        f = h5py.File(fp, 'w')
+        image.to_hdf5(f, quality=quality)
+        f.close()
+
+        if file_mode is not None:
+            retval = await aio.safe_chmod(fp, file_mode=file_mode)
+    elif file_format == 'json':
+        json_obj = image.to_json(quality=quality)
+
+        if isinstance(fp, str):
+            retval = await aio.json_save(fp, json_obj, indent=4, file_mode=file_mode, context_vars=context_vars, file_write_delayed=file_write_delayed)
+        else:
+            retval = json.dump(json_obj, fp, indent=4)
     else:
-        retval = json.dump(json_obj, fp, indent=4)
+        raise ValueError("Unnkown file format '{}'.".format(file_format))
 
     return retval
 
 
-def immsave(image, fp, file_mode: int = 0o664, quality: float = 90):
+def immsave(image, fp, file_mode: int = 0o664, quality: float = 90, file_format: str = 'hdf5'):
     '''Saves an image with metadata to file.
 
     Parameters
@@ -329,13 +469,16 @@ def immsave(image, fp, file_mode: int = 0o664, quality: float = 90):
         given, no setting of file mode will happen.
     quality : float
         percentage of image quality. Default is 90.
+    file_format : {'json', 'hdf5'}
+        format to be used for saving the content.
 
     Raises
     ------
     OSError
         if an error occured while loading
     '''
-    return aio.srun(immsave_asyn, image, fp, file_mode=file_mode, quality=quality)
+    return aio.srun(
+        immsave_asyn, image, fp, file_mode=file_mode, quality=quality, file_format=file_format)
 
 
 async def imload(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH, context_vars: dict = {}):

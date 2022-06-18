@@ -16,7 +16,7 @@ setup(name='mtopencv',
           # 'opencv-python', # let them install opencv-python or opencv-python-headless or whatever
           'ansicolors',  # for displaying images on the terminal
           'pyturbojpeg',  # for encoding/decoding images
-          'mtbase>=2.16',
+          'mtbase>=2.17',
           'mtgeo>=0.9',
       ]
       )
