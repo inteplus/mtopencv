@@ -436,12 +436,19 @@ async def immsave_asyn(
             raise ImportError("Unable to import h5py. You need to pip install it for "
                               "mt.opencv.Image to save to HDF5 format.")
 
-        f = h5py.File(fp, 'w')
+        if not isinstance(fp, str):
+            raise ValueError("For hdf5 format, argument 'fp' must be a string. Got: {}.".format(type(fp)))
+
+        fp2 = fp+'.mttmp'
+
+        f = h5py.File(fp2, 'w')
         image.to_hdf5(f, quality=quality)
         f.close()
 
         if file_mode is not None:
-            retval = await aio.safe_chmod(fp, file_mode=file_mode)
+            retval = await aio.safe_chmod(fp2, file_mode=file_mode)
+
+        path.rename(fp2, fp, overwrite=True)
     elif file_format == 'json':
         json_obj = image.to_json(quality=quality)
 
