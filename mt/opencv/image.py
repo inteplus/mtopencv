@@ -425,7 +425,7 @@ async def immsave_asyn(
     asyncio.Future or object
         In the case of format 'json', it is either a future or whatever :func:`json.dump` returns,
         depending on whether the file write task is delayed or not. In the case format 'hdf5', it
-        is whatever function :func:`mt.base.aio.files.safe_chmod` returns.
+        is the file size in bytes.
 
     Raises
     ------
@@ -445,6 +445,8 @@ async def immsave_asyn(
 
         async with aio.CreateFileH5(fp, file_mode=file_mode, context_vars=context_vars, logger=logger) as h5file:
             image.to_hdf5(h5file.handle, quality=quality)
+
+        retval = path.getsize(fp)
     elif file_format == 'json':
         json_obj = image.to_json(quality=quality)
 
