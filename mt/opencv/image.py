@@ -392,7 +392,9 @@ async def immsave_asyn(
         quality: float = 90,
         context_vars: dict = {},
         file_format: str = 'hdf5',
-        file_write_delayed: bool = False):
+        file_write_delayed: bool = False,
+        logger=None,
+):
     '''An asyn function that saves an image with metadata to file.
 
     Parameters
@@ -415,6 +417,8 @@ async def immsave_asyn(
     file_write_delayed : bool
         Only valid in asynchronous mode and the format is 'json'. If True, wraps the file write
         task into a future and returns the future. In all other cases, proceeds as usual.
+    logger : logging.Logger, optional
+        logger for debugging purposes
 
     Returns
     -------
@@ -439,16 +443,8 @@ async def immsave_asyn(
         if not isinstance(fp, str):
             raise ValueError("For hdf5 format, argument 'fp' must be a string. Got: {}.".format(type(fp)))
 
-        fp2 = fp+'.mttmp'
-
-        f = h5py.File(fp2, 'w')
-        image.to_hdf5(f, quality=quality)
-        f.close()
-
-        if file_mode is not None:
-            retval = await aio.safe_chmod(fp2, file_mode=file_mode)
-
-        path.rename(fp2, fp, overwrite=True)
+        async with aio.CreateFileH5(fp, file_mode=file_mode, context_vars=context_vars, logger=logger) as h5file:
+            image.to_hdf5(h5file.handle, quality=quality)
     elif file_format == 'json':
         json_obj = image.to_json(quality=quality)
 
@@ -462,7 +458,7 @@ async def immsave_asyn(
     return retval
 
 
-def immsave(image, fp, file_mode: int = 0o664, quality: float = 90, file_format: str = 'hdf5'):
+def immsave(image, fp, file_mode: int = 0o664, quality: float = 90, file_format: str = 'hdf5', logger=None):
     '''Saves an image with metadata to file.
 
     Parameters
@@ -478,6 +474,8 @@ def immsave(image, fp, file_mode: int = 0o664, quality: float = 90, file_format:
         percentage of image quality. Default is 90.
     file_format : {'json', 'hdf5'}
         format to be used for saving the content.
+    logger : logging.Logger, optional
+        logger for debugging purposes
 
     Raises
     ------
@@ -485,7 +483,7 @@ def immsave(image, fp, file_mode: int = 0o664, quality: float = 90, file_format:
         if an error occured while loading
     '''
     return aio.srun(
-        immsave_asyn, image, fp, file_mode=file_mode, quality=quality, file_format=file_format)
+        immsave_asyn, image, fp, file_mode=file_mode, quality=quality, file_format=file_format, logger=logger)
 
 
 async def imload(filepath: str, flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH, context_vars: dict = {}):
