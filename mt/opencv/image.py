@@ -425,7 +425,7 @@ async def immsave_asyn(
     asyncio.Future or object
         In the case of format 'json', it is either a future or whatever :func:`json.dump` returns,
         depending on whether the file write task is delayed or not. In the case format 'hdf5', it
-        is the file size in bytes.
+        is whatever :func:`Image.to_hdf5` returns.
 
     Raises
     ------
@@ -444,9 +444,7 @@ async def immsave_asyn(
             raise ValueError("For hdf5 format, argument 'fp' must be a string. Got: {}.".format(type(fp)))
 
         async with aio.CreateFileH5(fp, file_mode=file_mode, context_vars=context_vars, logger=logger) as h5file:
-            image.to_hdf5(h5file.handle, quality=quality)
-
-        retval = path.getsize(fp)
+            retval = image.to_hdf5(h5file.handle, quality=quality)
     elif file_format == 'json':
         json_obj = image.to_json(quality=quality)
 
@@ -603,6 +601,3 @@ def im_ubyte2float(img: np.ndarray, is_float01=True):
     if is_float01:
         return (img/255.0).astype(np.float32)
     return ((img/127.5)-1).astype(np.float32)
-
-
-# MT-TODO: implement Image.to_hdf5(), Image.from_hdf5() and adjust immload_asyn() and immsave_asyn() to deal with HDF5 files
