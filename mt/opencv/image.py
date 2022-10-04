@@ -1,6 +1,6 @@
 """An self-contained image."""
 
-
+import typing as tp
 from mt.base import path, aio
 from mt import np
 import cv2
@@ -645,7 +645,7 @@ async def imsave(
     )
 
 
-def im_float2ubyte(img: np.ndarray, is_float01=True):
+def im_float2ubyte(img: np.ndarray, is_float01: bool = True):
     """Converts an image with a float dtype into an image with an ubyte dtype.
 
     Parameters
@@ -665,7 +665,11 @@ def im_float2ubyte(img: np.ndarray, is_float01=True):
     return np.round((img * 127.5) + 127.5).astype(np.uint8)
 
 
-def im_ubyte2float(img: np.ndarray, is_float01=True):
+def im_ubyte2float(
+        img: np.ndarray,
+        is_float01: bool = True,
+        rng : tp.Union[np.random.RandomState, bool, None] = None,
+):
     """Converts an image with an ubyte dtype into an image with a float32 dtype.
 
     Parameters
@@ -673,13 +677,27 @@ def im_ubyte2float(img: np.ndarray, is_float01=True):
     img : nd.ndarray
         the image to be converted
     is_float01 : bool
-        whether the pixel values of the float image are to be in range [0,1] (True) or range [-1,1] (False)
+        whether the pixel values of the float image are to be in range [0,1] (True) or range [-1,1]
+        (False)
+    rng : numpy.random.RandomState or bool or None
+        Whether or not to use an rng to dequantise pixel values from integer to floats. If None or
+        False is provided, we do not add (0,1)-uniform noise to the pixel values. If True is
+        provided, an internal 'rng' is created. Otherwise, the provided 'rng' is used to generate
+        random numbers.
 
     Returns
     -------
     nd.ndarray
         the converted image with float32 dtype
     """
+    if rng is True:
+        rng = np.random.RandomState()
+    if isinstance(rng, np.random.RandomState):
+        img = np.dequantise_images(img, rng)
+        if is_float01:
+            return (img / 256.0).astype(np.float32)
+        return ((img / 128.0) - 1).astype(np.float32)
+
     if is_float01:
         return (img / 255.0).astype(np.float32)
     return ((img / 127.5) - 1).astype(np.float32)
