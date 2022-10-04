@@ -170,7 +170,11 @@ class Image(object):
             pixel_format=tj_params[0],
             jpeg_subsample=tj_params[2],
         )
-        h5_group.attrs["image"] = np.void(img_bytes)
+        h5_group.create_dataset(
+            "image",
+            data=np.frombytes(img_bytes),
+            compression="gzip",
+        )
 
         if self.pixel_format != "gray":
             a_id = self.pixel_format.find("a")
@@ -182,7 +186,11 @@ class Image(object):
                     pixel_format=tj.TJPF_GRAY,
                     jpeg_subsample=tj.TJSAMP_GRAY,
                 )
-                h5_group.attrs["alpha"] = np.void(img_bytes)
+                h5_group.create_dataset(
+                    "alpha",
+                    data=np.frombytes(img_bytes),
+                    compression="gzip",
+                )
 
     @staticmethod
     def from_json(json_obj):
@@ -239,13 +247,19 @@ class Image(object):
         pixel_format = h5_group.attrs["pixel_format"]
         meta = json.loads(h5_group.attrs["meta"])
 
-        decoded = h5_group.attrs["image"].tobytes()
+        if "image" in h5_group:  # dataset?
+            decoded = h5_group["image"][:].tobytes()
+        else:  # attribute?
+            decoded = h5_group.attrs["image"].tobytes()
         image = _tj.decode(decoded, pixel_format=PixelFormat[pixel_format][0])
 
         if pixel_format != "gray":
             a_id = pixel_format.find("a")
             if a_id >= 0:  # has alpha channel
-                decoded = h5_group.attrs["alpha"].tobytes()
+                if "alpha" in h5_group:
+                    decoded = h5_group["alpha"][:].tobytes()
+                else:
+                    decoded = h5_group.attrs["alpha"].tobytes()
                 alpha_image = _tj.decode(decoded, pixel_format=tj.TJPF_GRAY)
                 image[:, :, a_id : a_id + 1] = alpha_image
 
@@ -666,9 +680,9 @@ def im_float2ubyte(img: np.ndarray, is_float01: bool = True):
 
 
 def im_ubyte2float(
-        img: np.ndarray,
-        is_float01: bool = True,
-        rng : tp.Union[np.random.RandomState, bool, None] = None,
+    img: np.ndarray,
+    is_float01: bool = True,
+    rng: tp.Union[np.random.RandomState, bool, None] = None,
 ):
     """Converts an image with an ubyte dtype into an image with a float32 dtype.
 
