@@ -72,8 +72,8 @@ class Image(object):
         image_codec : {'jpg', 'png'}
             image codec. Currently only 'jpg' and 'png' are supported.
         quality : int, optional
-            percentage of image quality. For 'jpg', it is a value between 1 and 100. For 'png', it
-            is a value between 1 and 10. If not provided, the backend default will be used.
+            percentage of image quality. For 'jpg', it is a value between 0 and 100. For 'png', it
+            is a value between 0 and 9. If not provided, the backend default will be used.
 
         Returns
         -------
@@ -87,7 +87,8 @@ class Image(object):
         json_obj["height"] = self.image.shape[0]
         json_obj["width"] = self.image.shape[1]
         json_obj["image_codec"] = image_codec
-        json_obj["image_codec_quality"] = quality
+        if quality is not None:
+            json_obj["image_codec_quality"] = quality
         json_obj["meta"] = self.meta
 
         # image
@@ -133,8 +134,8 @@ class Image(object):
         image_codec : {'jpg', 'png'}
             image codec. Currently only 'jpg' and 'png' are supported.
         quality : int, optional
-            percentage of image quality. For 'jpg', it is a value between 1 and 100. For 'png', it
-            is a value between 1 and 10. If not provided, the backend default will be used.
+            percentage of image quality. For 'jpg', it is a value between 0 and 100. For 'png', it
+            is a value between 0 and 9. If not provided, the backend default will be used.
 
         Raises
         ------
@@ -153,7 +154,8 @@ class Image(object):
         h5_group.attrs["height"] = self.image.shape[0]
         h5_group.attrs["width"] = self.image.shape[1]
         h5_group.attrs["image_codec"] = image_codec
-        h5_group.attrs["image_codec_quality"] = quality
+        if quality is not None:
+            h5_group.attrs["image_codec_quality"] = quality
         h5_group.attrs["meta"] = json.dumps(self.meta)
 
         # image
@@ -476,8 +478,8 @@ async def immsave_asyn(
     image_codec : {'jpg', 'png'}
         image codec. Currently only 'jpg' and 'png' are supported.
     quality : int, optional
-        percentage of image quality. For 'jpg', it is a value between 1 and 100. For 'png', it is
-        a value between 1 and 10. If not provided, the backend default will be used.
+        percentage of image quality. For 'jpg', it is a value between 0 and 100. For 'png', it is
+        a value between 0 and 9. If not provided, the backend default will be used.
     context_vars : dict
         a dictionary of context variables within which the function runs. It must include
         `context_vars['async']` to tell whether to invoke the function asynchronously or not.
@@ -567,8 +569,8 @@ def immsave(
     image_codec : {'jpg', 'png'}
         image codec. Currently only 'jpg' and 'png' are supported.
     quality : int, optional
-        percentage of image quality. For 'jpg', it is a value between 1 and 100. For 'png', it is
-        a value between 1 and 10. If not provided, the backend default will be used.
+        percentage of image quality. For 'jpg', it is a value between 0 and 100. For 'png', it is
+        a value between 0 and 9. If not provided, the backend default will be used.
     file_format : {'json', 'hdf5'}
         format to be used for saving the content.
     logger : logging.Logger, optional
