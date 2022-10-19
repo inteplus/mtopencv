@@ -64,16 +64,16 @@ class Image(object):
 
     # ---- serialisation -----
 
-    def to_json(self, image_codec: str = "jpg", quality: int = 90):
+    def to_json(self, image_codec: str = "jpg", quality: tp.Optional[int] = 90):
         """Dumps the image to a JSON-like object.
 
         Parameters
         ----------
         image_codec : {'jpg', 'png'}
             image codec. Currently only 'jpg' and 'png' are supported.
-        quality : int
+        quality : int, optional
             percentage of image quality. For 'jpg', it is a value between 1 and 100. For 'png', it
-            is a value between 1 and 10.
+            is a value between 1 and 10. If not provided, the backend default will be used.
 
         Returns
         -------
@@ -121,7 +121,9 @@ class Image(object):
 
         return json_obj
 
-    def to_hdf5(self, h5_group, image_codec: str = "jpg", quality: int = 90):
+    def to_hdf5(
+        self, h5_group, image_codec: str = "jpg", quality: tp.Optional[int] = 90
+    ):
         """Dumps the image to a h5py.Group object.
 
         Parameters
@@ -130,9 +132,9 @@ class Image(object):
             a :class:`h5py.Group` object to write to
         image_codec : {'jpg', 'png'}
             image codec. Currently only 'jpg' and 'png' are supported.
-        quality : int
+        quality : int, optional
             percentage of image quality. For 'jpg', it is a value between 1 and 100. For 'png', it
-            is a value between 1 and 10.
+            is a value between 1 and 10. If not provided, the backend default will be used.
 
         Raises
         ------
@@ -169,8 +171,11 @@ class Image(object):
                 compression="gzip",
             )
         elif image_codec == "png":
-            params = (cv2.IMWRITE_PNG_COMPRESSION, quality)
-            retval, x = cv2.imencode(".png", self.image, params)
+            if quality is None:
+                retval, x = cv2.imencode(".png", self.image)
+            else:
+                params = (cv2.IMWRITE_PNG_COMPRESSION, quality)
+                retval, x = cv2.imencode(".png", self.image, params)
             if not retval:
                 raise RuntimeError(
                     "Unable to use OpenCV to png-encode the image of shape {}.".format(
@@ -450,7 +455,7 @@ async def immsave_asyn(
     fp: str,
     file_mode: int = 0o664,
     image_codec: str = "jpg",
-    quality: int = 90,
+    quality: tp.Optional[int] = 90,
     context_vars: dict = {},
     file_format: str = "hdf5",
     file_write_delayed: bool = False,
@@ -470,9 +475,9 @@ async def immsave_asyn(
         will happen.
     image_codec : {'jpg', 'png'}
         image codec. Currently only 'jpg' and 'png' are supported.
-    quality : int
+    quality : int, optional
         percentage of image quality. For 'jpg', it is a value between 1 and 100. For 'png', it is
-        a value between 1 and 10.
+        a value between 1 and 10. If not provided, the backend default will be used.
     context_vars : dict
         a dictionary of context variables within which the function runs. It must include
         `context_vars['async']` to tell whether to invoke the function asynchronously or not.
@@ -544,7 +549,7 @@ def immsave(
     fp,
     file_mode: int = 0o664,
     image_codec: str = "jpg",
-    quality: int = 90,
+    quality: tp.Optional[int] = 90,
     file_format: str = "hdf5",
     logger=None,
 ):
@@ -561,9 +566,9 @@ def immsave(
         given, no setting of file mode will happen.
     image_codec : {'jpg', 'png'}
         image codec. Currently only 'jpg' and 'png' are supported.
-    quality : int
+    quality : int, optional
         percentage of image quality. For 'jpg', it is a value between 1 and 100. For 'png', it is
-        a value between 1 and 10.
+        a value between 1 and 10. If not provided, the backend default will be used.
     file_format : {'json', 'hdf5'}
         format to be used for saving the content.
     logger : logging.Logger, optional
