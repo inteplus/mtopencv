@@ -64,7 +64,7 @@ class Image(object):
 
     # ---- serialisation -----
 
-    def to_json(self, image_codec: str = "jpg", quality: tp.Optional[int] = 90):
+    def to_json(self, image_codec: str = "jpg", quality: tp.Optional[int] = None):
         """Dumps the image to a JSON-like object.
 
         Parameters
@@ -122,7 +122,7 @@ class Image(object):
         return json_obj
 
     def to_hdf5(
-        self, h5_group, image_codec: str = "jpg", quality: tp.Optional[int] = 90
+        self, h5_group, image_codec: str = "jpg", quality: tp.Optional[int] = None
     ):
         """Dumps the image to a h5py.Group object.
 
@@ -174,7 +174,7 @@ class Image(object):
             if quality is None:
                 retval, x = cv2.imencode(".png", self.image)
             else:
-                params = (cv2.IMWRITE_PNG_COMPRESSION, quality)
+                params = [cv2.IMWRITE_PNG_COMPRESSION, quality]
                 retval, x = cv2.imencode(".png", self.image, params)
             if not retval:
                 raise RuntimeError(
@@ -455,7 +455,7 @@ async def immsave_asyn(
     fp: str,
     file_mode: int = 0o664,
     image_codec: str = "jpg",
-    quality: tp.Optional[int] = 90,
+    quality: tp.Optional[int] = None,
     context_vars: dict = {},
     file_format: str = "hdf5",
     file_write_delayed: bool = False,
@@ -549,7 +549,7 @@ def immsave(
     fp,
     file_mode: int = 0o664,
     image_codec: str = "jpg",
-    quality: tp.Optional[int] = 90,
+    quality: tp.Optional[int] = None,
     file_format: str = "hdf5",
     logger=None,
 ):
