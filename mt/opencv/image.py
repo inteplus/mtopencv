@@ -62,38 +62,18 @@ class Image(object):
             self.image.shape, self.pixel_format, json.dumps(self.meta)
         )
 
-    def check(self):
-        """Checks for data consistency, raising a ValueError if something has gone wrong."""
-        if len(self.image.shape) == 2:
-            if self.pixel_format != "gray":
-                raise ValueError(
-                    "Pixel format is not 'gray' but image has only one channel."
-                )
-            self.image = self.image.reshape(self.image.shape + (1,))
-        elif len(self.image.shape) == 3:
-            desired_nchannels = PixelFormat[self.pixel_format][1]
-            if self.image.shape[2] != desired_nchannels:
-                raise ValueError(
-                    "Unexpected number of channels {}. It should be {} for pixel format '{}'.".format(
-                        self.image.shape[2], desired_nchannels, self.pixel_format
-                    )
-                )
-        else:
-            raise ValueError(
-                "Unexpected image shape {}. It must have 2 or 3 dimensions.".format(
-                    self.image.shape
-                )
-            )
-
     # ---- serialisation -----
 
-    def to_json(self, quality=90):
+    def to_json(self, image_codec: str = "jpg", quality: int = 90):
         """Dumps the image to a JSON-like object.
 
         Parameters
         ----------
+        image_codec : {'jpg', 'png'}
+            image codec. Currently only 'jpg' and 'png' are supported.
         quality : int
-            percentage of image quality. Default is 90.
+            percentage of image quality. For 'jpg', it is a value between 1 and 100. For 'png', it
+            is a value between 1 and 10.
 
         Returns
         -------
@@ -106,16 +86,23 @@ class Image(object):
         json_obj["pixel_format"] = self.pixel_format
         json_obj["height"] = self.image.shape[0]
         json_obj["width"] = self.image.shape[1]
+        json_obj["image_codec"] = image_codec
+        json_obj["image_codec_quality"] = quality
         json_obj["meta"] = self.meta
 
         # image
         tj_params = PixelFormat[self.pixel_format]
-        img_bytes = _tj.encode(
-            self.image,
-            quality=quality,
-            pixel_format=tj_params[0],
-            jpeg_subsample=tj_params[2],
-        )
+        if image_codec == "jpg":
+            img_bytes = _tj.encode(
+                self.image,
+                quality=quality,
+                pixel_format=tj_params[0],
+                jpeg_subsample=tj_params[2],
+            )
+        elif image_codec == "png":
+            raise NotImplementedError
+        else:
+            raise ValueError("Unknown image codec '{}'.".format(image_codec))
         encoded = base64.b64encode(img_bytes)
         json_obj["image"] = encoded.decode("ascii")
 
@@ -134,15 +121,18 @@ class Image(object):
 
         return json_obj
 
-    def to_hdf5(self, h5_group, quality=90):
+    def to_hdf5(self, h5_group, image_codec: str = "jpg", quality: int = 90):
         """Dumps the image to a h5py.Group object.
 
         Parameters
         ----------
         h5_group : h5py.Group
             a :class:`h5py.Group` object to write to
+        image_codec : {'jpg', 'png'}
+            image codec. Currently only 'jpg' and 'png' are supported.
         quality : int
-            percentage of image quality. Default is 90.
+            percentage of image quality. For 'jpg', it is a value between 1 and 100. For 'png', it
+            is a value between 1 and 10.
 
         Raises
         ------
@@ -160,23 +150,38 @@ class Image(object):
         h5_group.attrs["pixel_format"] = self.pixel_format
         h5_group.attrs["height"] = self.image.shape[0]
         h5_group.attrs["width"] = self.image.shape[1]
+        h5_group.attrs["image_codec"] = image_codec
+        h5_group.attrs["image_codec_quality"] = quality
         h5_group.attrs["meta"] = json.dumps(self.meta)
 
         # image
         tj_params = PixelFormat[self.pixel_format]
-        img_bytes = _tj.encode(
-            self.image,
-            quality=quality,
-            pixel_format=tj_params[0],
-            jpeg_subsample=tj_params[2],
-        )
-        h5_group.create_dataset(
-            "image",
-            data=np.frombytes(img_bytes),
-            compression="gzip",
-        )
+        if image_codec == "jpg":
+            img_bytes = _tj.encode(
+                self.image,
+                quality=quality,
+                pixel_format=tj_params[0],
+                jpeg_subsample=tj_params[2],
+            )
+            h5_group.create_dataset(
+                "image",
+                data=np.frombytes(img_bytes),
+                compression="gzip",
+            )
+        elif image_codec == "png":
+            params = (cv2.IMWRITE_PNG_COMPRESSION, quality)
+            retval, x = cv2.imencode(".png", self.image, params)
+            if not retval:
+                raise RuntimeError(
+                    "Unable to use OpenCV to png-encode the image of shape {}.".format(
+                        image.shape
+                    )
+                )
+            h5_group["image"] = x
+        else:
+            raise ValueError("Unknown image codec '{}'.".format(image_codec))
 
-        if self.pixel_format != "gray":
+        if image_codec == "jpg" and self.pixel_format != "gray":
             a_id = self.pixel_format.find("a")
             if a_id >= 0:  # has alpha channel
                 alpha_image = np.ascontiguousarray(self.image[:, :, a_id : a_id + 1])
@@ -209,6 +214,7 @@ class Image(object):
 
         # meta
         pixel_format = json_obj["pixel_format"]
+        image_codec = json_obj.get("image_codec", "jpg")
         meta = json_obj["meta"]
 
         decoded = base64.b64decode(json_obj["image"])
@@ -245,23 +251,27 @@ class Image(object):
 
         # meta
         pixel_format = h5_group.attrs["pixel_format"]
+        image_codec = h5_group.attrs.get("image_codec", "jpg")
         meta = json.loads(h5_group.attrs["meta"])
 
-        if "image" in h5_group:  # dataset?
-            decoded = h5_group["image"][:].tobytes()
-        else:  # attribute?
-            decoded = h5_group.attrs["image"].tobytes()
-        image = _tj.decode(decoded, pixel_format=PixelFormat[pixel_format][0])
+        if image_codec == "jpg":
+            if "image" in h5_group:  # dataset?
+                decoded = h5_group["image"][:].tobytes()
+            else:  # attribute?
+                decoded = h5_group.attrs["image"].tobytes()
+            image = _tj.decode(decoded, pixel_format=PixelFormat[pixel_format][0])
 
-        if pixel_format != "gray":
-            a_id = pixel_format.find("a")
-            if a_id >= 0:  # has alpha channel
-                if "alpha" in h5_group:
-                    decoded = h5_group["alpha"][:].tobytes()
-                else:
-                    decoded = h5_group.attrs["alpha"].tobytes()
-                alpha_image = _tj.decode(decoded, pixel_format=tj.TJPF_GRAY)
-                image[:, :, a_id : a_id + 1] = alpha_image
+            if pixel_format != "gray":
+                a_id = pixel_format.find("a")
+                if a_id >= 0:  # has alpha channel
+                    if "alpha" in h5_group:
+                        decoded = h5_group["alpha"][:].tobytes()
+                    else:
+                        decoded = h5_group.attrs["alpha"].tobytes()
+                    alpha_image = _tj.decode(decoded, pixel_format=tj.TJPF_GRAY)
+                    image[:, :, a_id : a_id + 1] = alpha_image
+        else:  # png
+            image = cv2.imdecode(h5_group["image"][:], cv2.IMREAD_UNCHANGED)
 
         return Image(image, pixel_format=pixel_format, meta=meta)
 
@@ -439,7 +449,8 @@ async def immsave_asyn(
     image: Image,
     fp: str,
     file_mode: int = 0o664,
-    quality: float = 90,
+    image_codec: str = "jpg",
+    quality: int = 90,
     context_vars: dict = {},
     file_format: str = "hdf5",
     file_write_delayed: bool = False,
@@ -457,8 +468,11 @@ async def immsave_asyn(
     file_mode : int
         file mode to be set to using :func:`os.chmod`. If None is given, no setting of file mode
         will happen.
-    quality : float
-        percentage of image quality. Default is 90.
+    image_codec : {'jpg', 'png'}
+        image codec. Currently only 'jpg' and 'png' are supported.
+    quality : int
+        percentage of image quality. For 'jpg', it is a value between 1 and 100. For 'png', it is
+        a value between 1 and 10.
     context_vars : dict
         a dictionary of context variables within which the function runs. It must include
         `context_vars['async']` to tell whether to invoke the function asynchronously or not.
@@ -502,9 +516,11 @@ async def immsave_asyn(
         async with aio.CreateFileH5(
             fp, file_mode=file_mode, context_vars=context_vars, logger=logger
         ) as h5file:
-            retval = image.to_hdf5(h5file.handle, quality=quality)
+            retval = image.to_hdf5(
+                h5file.handle, image_codec=image_codec, quality=quality
+            )
     elif file_format == "json":
-        json_obj = image.to_json(quality=quality)
+        json_obj = image.to_json(image_codec=image_codec, quality=quality)
 
         if isinstance(fp, str):
             retval = await aio.json_save(
@@ -527,7 +543,8 @@ def immsave(
     image,
     fp,
     file_mode: int = 0o664,
-    quality: float = 90,
+    image_codec: str = "jpg",
+    quality: int = 90,
     file_format: str = "hdf5",
     logger=None,
 ):
@@ -542,8 +559,11 @@ def immsave(
     file_mode : int
         file mode to be set to using :func:`os.chmod`. Only valid if fp is a string. If None is
         given, no setting of file mode will happen.
-    quality : float
-        percentage of image quality. Default is 90.
+    image_codec : {'jpg', 'png'}
+        image codec. Currently only 'jpg' and 'png' are supported.
+    quality : int
+        percentage of image quality. For 'jpg', it is a value between 1 and 100. For 'png', it is
+        a value between 1 and 10.
     file_format : {'json', 'hdf5'}
         format to be used for saving the content.
     logger : logging.Logger, optional
@@ -559,6 +579,7 @@ def immsave(
         image,
         fp,
         file_mode=file_mode,
+        image_codec=image_codec,
         quality=quality,
         file_format=file_format,
         logger=logger,
