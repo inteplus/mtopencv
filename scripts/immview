@@ -90,6 +90,8 @@ async def main(args, context_vars: dict = {}):
             image_type = "jpg"
         elif args.imm_file.lower().endswith(".jpeg"):
             image_type = "jpg"
+        elif args.imm_file.lower().endswith(".png"):
+            image_type = "png"
         else:
             image_type_detail = await filetype.image_match_asyn(
                 args.imm_file, context_vars=context_vars
@@ -115,6 +117,8 @@ async def main(args, context_vars: dict = {}):
                 else:
                     pixel_format = None
             elif image_type == "png":
+                if len(image.shape) < 3:
+                    pixel_format = "gray"
                 if image.shape[2] == 4:
                     pixel_format = "bgra"
                 elif image.shape[2] == 3:
