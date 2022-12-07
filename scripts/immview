@@ -119,7 +119,7 @@ async def main(args, context_vars: dict = {}):
             elif image_type == "png":
                 if len(image.shape) < 3:
                     pixel_format = "gray"
-                if image.shape[2] == 4:
+                elif image.shape[2] == 4:
                     pixel_format = "bgra"
                 elif image.shape[2] == 3:
                     pixel_format = "bgr"
