@@ -1,16 +1,18 @@
-'''Affine-warping and cropping an image.'''
+"""Affine-warping and cropping an image."""
 
 
 import mt.geo2d as g2
 from . import cv2 as cv
 
 
-__all__ = ['do_warp_image', 'warp_image', 'crop_image']
+__all__ = ["do_warp_image", "warp_image", "crop_image"]
 
 
-def do_warp_image(out_image, in_image, inv_tfm, inter_mode='nearest', border_mode='constant'):
-    '''Takes an inverse warping transformation which goes from output image to input image and warps the input image.
-    
+def do_warp_image(
+    out_image, in_image, inv_tfm, inter_mode="nearest", border_mode="constant"
+):
+    """Takes an inverse warping transformation which goes from output image to input image and warps the input image.
+
     Parameters
     ----------
     out_image : numpy.ndarray
@@ -18,26 +20,34 @@ def do_warp_image(out_image, in_image, inv_tfm, inter_mode='nearest', border_mod
     in_image : numpy.ndarray
         input image from which the warping takes place
     inv_tfm : mt.geo.affine2d.Aff2d
-        2D transformation mapping pixel locations in the output image to pixel locations in the input image
+        2D transformation mapping pixel locations in the output image to pixel locations in the
+        input image
     inter_mode : {'nearest', 'bilinear'}
-        interpolation mode. 'nearest' means nearest neighbour. 'bilinear' means bilinear interpolation
+        interpolation mode. 'nearest' means nearest neighbour. 'bilinear' means bilinear
+        interpolation
     border_mode : {'constant', 'replicate'}
-        border filling mode. 'constant' means filling zero constant. 'replicate' means replicating last pixels in each dimension. 
-    '''    
-    borderMode = cv.BORDER_CONSTANT if border_mode == 'constant' else cv.BORDER_REPLICATE # we fill zeros here
-    interMode = cv.INTER_NEAREST if inter_mode == 'nearest' else cv.INTER_LINEAR
+        border filling mode. 'constant' means filling zero constant. 'replicate' means replicating
+        last pixels in each dimension.
+    """
+    borderMode = (
+        cv.BORDER_CONSTANT if border_mode == "constant" else cv.BORDER_REPLICATE
+    )  # we fill zeros here
+    interMode = cv.INTER_NEAREST if inter_mode == "nearest" else cv.INTER_LINEAR
     cv.warpAffine(
         in_image,
         inv_tfm.matrix[:2, :],
         dst=out_image,
         dsize=(out_image.shape[1], out_image.shape[0]),
         flags=cv.WARP_INVERSE_MAP | interMode,
-        borderMode=borderMode)
+        borderMode=borderMode,
+    )
 
 
-def warp_image(out_image, in_image, warp_tfm, inter_mode='nearest', border_mode='constant'):
-    '''Takes a warping transformation mapping input image coordinates to the unit square, scales it to the output resolution, then warps the input image.
-    
+def warp_image(
+    out_image, in_image, warp_tfm, inter_mode="nearest", border_mode="constant"
+):
+    """Takes a warping transformation mapping input image coordinates to the unit square, scales it to the output resolution, then warps the input image.
+
     Parameters
     ----------
     out_image : numpy.ndarray
@@ -47,17 +57,23 @@ def warp_image(out_image, in_image, warp_tfm, inter_mode='nearest', border_mode=
     warp_tfm : mt.geo.affine2d.Aff2d
         2D transformation mapping pixel locations in the input image to the `[0,1]^2` square
     inter_mode : {'nearest', 'bilinear'}
-        interpolation mode. 'nearest' means nearest neighbour. 'bilinear' means bilinear interpolation
+        interpolation mode. 'nearest' means nearest neighbour. 'bilinear' means bilinear
+        interpolation
     border_mode : {'constant', 'replicate'}
-        border filling mode. 'constant' means filling zero constant. 'replicate' means replicating last pixels in each dimension. 
-    '''    
-    inv_tfm = ~(g2.scale2d(out_image.shape[1], out_image.shape[0])*warp_tfm)
-    return do_warp_image(out_image, in_image, inv_tfm, inter_mode=inter_mode, border_mode=border_mode)
+        border filling mode. 'constant' means filling zero constant. 'replicate' means replicating
+        last pixels in each dimension.
+    """
+    inv_tfm = ~(g2.scale2d(out_image.shape[1], out_image.shape[0]) * warp_tfm)
+    return do_warp_image(
+        out_image, in_image, inv_tfm, inter_mode=inter_mode, border_mode=border_mode
+    )
 
 
-def crop_image(out_image, in_image, crop_rect, inter_mode='nearest', border_mode='constant'):
-    '''Takes a crop window from input image and warp/resize it to output image.
-    
+def crop_image(
+    out_image, in_image, crop_rect, inter_mode="nearest", border_mode="constant"
+):
+    """Takes a crop window from input image and warp/resize it to output image.
+
     Parameters
     ----------
     out_image : numpy.ndarray
@@ -67,9 +83,13 @@ def crop_image(out_image, in_image, crop_rect, inter_mode='nearest', border_mode
     crop_rect : mt.geo.rect.Rect
         crop window
     inter_mode : {'nearest', 'bilinear'}
-        interpolation mode. 'nearest' means nearest neighbour interpolation. 'bilinear' means bilinear interpolation
+        interpolation mode. 'nearest' means nearest neighbour interpolation. 'bilinear' means
+        bilinear interpolation
     border_mode : {'constant', 'replicate'}
-        border filling mode. 'constant' means filling zero constant. 'replicate' means replicating last pixels in each dimension. 
-    '''    
+        border filling mode. 'constant' means filling zero constant. 'replicate' means replicating
+        last pixels in each dimension.
+    """
     crop_tfm = g2.crop_rect(crop_rect)
-    return warp_image(out_image, in_image, crop_tfm, inter_mode=inter_mode, border_mode=border_mode)
+    return warp_image(
+        out_image, in_image, crop_tfm, inter_mode=inter_mode, border_mode=border_mode
+    )
