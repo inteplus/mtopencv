@@ -9,7 +9,11 @@ __all__ = ["do_warp_image", "warp_image", "crop_image"]
 
 
 def do_warp_image(
-    out_image, in_image, inv_tfm, inter_mode="nearest", border_mode="constant"
+    out_image: np.ndarray,
+    in_image: np.ndarray,
+    inv_tfm: g2.Aff2d,
+    inter_mode: str = "nearest",
+    border_mode: str = "constant",
 ):
     """Takes an inverse warping transformation which goes from output image to input image and warps the input image.
 
@@ -44,7 +48,11 @@ def do_warp_image(
 
 
 def warp_image(
-    out_image, in_image, warp_tfm, inter_mode="nearest", border_mode="constant"
+    out_image: np.ndarray,
+    in_image: np.ndarray,
+    warp_tfm: g2.Aff2d,
+    inter_mode: str = "nearest",
+    border_mode: str = "constant",
 ):
     """Takes a warping transformation mapping input image coordinates to the unit square, scales it to the output resolution, then warps the input image.
 
@@ -70,7 +78,11 @@ def warp_image(
 
 
 def crop_image(
-    out_image, in_image, crop_rect, inter_mode="nearest", border_mode="constant"
+    out_image: np.ndarray,
+    in_image: np.ndarray,
+    crop_rect: g2.Rect,
+    inter_mode: str = "nearest",
+    border_mode: str = "constant",
 ):
     """Takes a crop window from input image and warp/resize it to output image.
 
