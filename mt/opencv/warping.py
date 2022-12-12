@@ -1,6 +1,7 @@
 """Affine-warping and cropping an image."""
 
 
+from mt import np
 import mt.geo2d as g2
 from . import cv2 as cv
 
