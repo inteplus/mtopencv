@@ -391,6 +391,8 @@ def estimate_cropping(
         mask_crop, alpha=alpha, thresh=thresh, square=False, padding=0.0
     )
 
+    src_imgres = mask_cropping.imgres
+
     cropping_on_mask = Cropping(
         mask_cropping.cropres, window=window, cropres=out_cropres
     )
@@ -412,18 +414,16 @@ def estimate_cropping(
     hw = w * 0.5
 
     if try_to_fit:
-        if w >= mask_crop.imgres[0]:
-            cx = mask_crop.imgres[0] * 0.5
+        if w >= src_imgres[0]:
+            cx = src_imgres[0] * 0.5
         else:
-            cx = float(np.clip(cx, hw, mask_crop.imgres[0] - hw))
-        if h >= mask_crop.imgres[1]:
-            cy = mask_crop.imgres[1] * 0.5
+            cx = float(np.clip(cx, hw, src_imgres[0] - hw))
+        if h >= src_imgres[1]:
+            cy = src_imgres[1] * 0.5
         else:
-            cy = float(np.clip(cy, hh, mask_crop.imgres[1] - hh))
+            cy = float(np.clip(cy, hh, src_imgres[1] - hh))
 
     window = g2.Rect(cx - hw, cy - hh, cx + hw, cy + hh)
-    out_cropping = Cropping(
-        out_cropping.imgres, window=window, cropres=out_cropping.cropres
-    )
+    out_cropping = Cropping(src_imgres, window=window, cropres=out_cropres)
 
     return out_cropping
