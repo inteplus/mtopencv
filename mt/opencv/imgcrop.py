@@ -7,10 +7,11 @@ like an image transform.
 """
 
 import typing as tp
-import cv2
 from mt import np
 from mt.base.deprecated import deprecated_func
 import mt.geo2d as g2
+
+from .warping import do_warp_image
 
 
 __all__ = [
@@ -236,7 +237,7 @@ class Cropping:
             )
 
         inv_tfm = ~self.get_img2crop_tfm()
-        cv2.do_warp_image(
+        do_warp_image(
             out_image,
             in_image,
             inv_tfm,
