@@ -31,7 +31,6 @@ __all__ = [
     "get_center_window",
     "get_center_window_tfm",
     "get_center_window_tfm_tf",
-    "preprocess_input_images",
     "make_thumbnail",
     "get_thumbnail_imgres",
 ]
@@ -226,24 +225,6 @@ def get_center_window_tfm_tf(dst_shape, src_shape, alpha=1.0):
     ) / 2  # (src_shape[0]/2)*sy + ty = (dst_shape[0]/2)
 
     return tf.convert_to_tensor([[sx, 0.0, tx], [0.0, sy, ty], [0.0, 0.0, 1.0]])
-
-
-def preprocess_input_images(x):
-    """Preprocesses a numpy array encoding a batch of images.
-
-    Parameters
-    ----------
-    x : numpy.array
-        a 4D numpy array consists of RGB values within [0, 255].
-
-    Returns
-    -------
-    numpy.array
-        Input arrays scaled to [-1.,1.] each
-    """
-    import tensorflow.keras.applications.inception_v3 as kai
-
-    return kai.preprocess_input(x)
 
 
 def get_thumbnail_imgres(raw_imgres: list, large: bool = False) -> list:
