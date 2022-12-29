@@ -10,3 +10,4 @@ from mt.opencv.warping import *
 from mt.opencv.image import *
 from mt.opencv.imgcrop import *
 from mt.opencv.ansi import *
+from mt.opencv import imgres
