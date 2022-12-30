@@ -214,13 +214,14 @@ class Cropping:
                 )
             )
 
-        in_imgres = [in_image.shape[1], in_image.shape[0]]
-        if in_imgres != self.imgres:
-            raise ValueError(
-                "Expect the imgres to be {}. But {} given.".format(
-                    self.imgres, in_imgres
+        if False:
+            in_imgres = [in_image.shape[1], in_image.shape[0]]
+            if in_imgres != self.imgres:
+                raise ValueError(
+                    "Expect the imgres to be {}. But {} given.".format(
+                        self.imgres, in_imgres
+                    )
                 )
-            )
 
         if out_image is None:
             out_image = np.empty(
