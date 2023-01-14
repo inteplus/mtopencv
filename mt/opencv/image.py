@@ -1,10 +1,9 @@
 """An self-contained image."""
 
 import typing as tp
-from mt.base import path, aio
-from mt import np
+from mt import np, path
+from mt.base import aio
 import cv2
-import aiofiles
 import base64
 import json
 import turbojpeg as tj

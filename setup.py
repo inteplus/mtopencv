@@ -17,7 +17,7 @@ setup(
         # 'opencv-python', # let them install opencv-python or opencv-python-headless or whatever
         "ansicolors",  # for displaying images on the terminal
         "pyturbojpeg",  # for encoding/decoding images
-        "mtbase>=3.1",  # to have mt.np.dequantise_images
+        "mtbase>=3.4",  # to have mt.path
         "mtgeo>=0.10",
     ],
 )
