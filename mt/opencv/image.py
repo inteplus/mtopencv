@@ -1,8 +1,7 @@
 """An self-contained image."""
 
 import typing as tp
-from mt import np, path
-from mt.base import aio
+from mt import np, path, aio
 import cv2
 import base64
 import json
