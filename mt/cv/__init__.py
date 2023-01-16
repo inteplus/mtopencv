@@ -12,7 +12,7 @@ You do:
 
    from mt import cv
 
-It will import the OpenCV package plus the additional stuff implemented here.
+It will import the OpenCV package plus the additional stuff implemented in :module:`mt.opencv`.
 
 Please see `opencv`_ package for Python for more details.
 
