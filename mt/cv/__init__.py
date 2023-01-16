@@ -1,3 +1,25 @@
+"""Additional utitlities dealing with OpenCV for Python.
+
+Instead of:
+
+.. code-block:: python
+
+   import cv2
+
+You do:
+
+.. code-block:: python
+
+   from mt import cv
+
+It will import the OpenCV package plus the additional stuff implemented here.
+
+Please see `opencv`_ package for Python for more details.
+
+.. _opencv:
+   https://docs.opencv.org/
+"""
+
 import cv2
 
 for key in cv2.__dict__:
