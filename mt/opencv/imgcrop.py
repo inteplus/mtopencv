@@ -6,10 +6,8 @@ analogous to an image transformation. A crop is the result of cropping an image.
 like an image transform.
 """
 
-import typing as tp
-from mt import np
+from mt import tp, np, geo2d
 from mt.base.deprecated import deprecated_func
-import mt.geo2d as g2
 
 from .warping import do_warp_image
 
@@ -41,14 +39,16 @@ class Cropping:
     def __init__(
         self,
         imgres: list,
-        window: tp.Optional[g2.Rect] = None,
+        window: tp.Optional[geo2d.Rect] = None,
         cropres: list = [1, 1],
-        crop: tp.Optional[g2.Rect] = None,
+        crop: tp.Optional[geo2d.Rect] = None,
     ):
         self.imgres = imgres
         if window is None:
             window = crop
-        self.window = g2.Rect(0, 0, imgres[0], imgres[1]) if window is None else window
+        self.window = (
+            geo2d.Rect(0, 0, imgres[0], imgres[1]) if window is None else window
+        )
         self.cropres = cropres
 
     def __repr__(self):
@@ -65,14 +65,16 @@ class Cropping:
 
     @classmethod
     def from_json(cls, json_obj):
-        window = g2.Rect.from_json(json_obj["crop" if "crop" in json_obj else "window"])
+        window = geo2d.Rect.from_json(
+            json_obj["crop" if "crop" in json_obj else "window"]
+        )
         return Cropping(
             json_obj["imgres"],
             window,
             json_obj["cropres"],
         )
 
-    def get_img2crop_tfm(self) -> g2.Aff2d:
+    def get_img2crop_tfm(self) -> geo2d.Aff2d:
         """Returns the 2D affine transformation mapping source pixels to crop pixels.
 
         Returns
@@ -81,8 +83,8 @@ class Cropping:
             output 2D transformation
         """
 
-        dst_rect = g2.Rect(0, 0, self.cropres[0], self.cropres[1])
-        return g2.rect2rect(self.window, dst_rect)
+        dst_rect = geo2d.Rect(0, 0, self.cropres[0], self.cropres[1])
+        return geo2d.rect2rect(self.window, dst_rect)
 
     def get_img2crop_tfm_tf(self):
         """Returns the 2D affine transformation TF tensor mapping source pixels to crop pixels.
@@ -136,7 +138,7 @@ class Cropping:
         max_pt = tfm >> other.window.max_pt
         return Cropping(
             self.imgres,
-            g2.Rect(min_pt[0], min_pt[1], max_pt[0], max_pt[1]),
+            geo2d.Rect(min_pt[0], min_pt[1], max_pt[0], max_pt[1]),
             other.cropres,
         )
 
@@ -172,7 +174,7 @@ class Cropping:
         max_pt = tfm << self.window.max_pt
         return Cropping(
             other.cropres,
-            g2.Rect(min_pt[0], min_pt[1], max_pt[0], max_pt[1]),
+            geo2d.Rect(min_pt[0], min_pt[1], max_pt[0], max_pt[1]),
             self.cropres,
         )
 
@@ -257,7 +259,7 @@ def weight2crop(
     thresh: float = 0.0,
     square: bool = True,
     padding: float = 0.0,
-) -> g2.Rect:
+) -> geo2d.Rect:
     """Estimates a crop that covers a minimum percentage of the total weight.
 
     Parameters
@@ -301,7 +303,7 @@ def weight2crop(
     # print(bins)
     total_weight = np.dot(hist, bins[:bin_cnt])
     if abs(total_weight) < 1e-7:
-        return g2.Rect(0, 0, 0, 0)  # null rect
+        return geo2d.Rect(0, 0, 0, 0)  # null rect
 
     # print(total_weight)
     weight_thresh = alpha * total_weight
@@ -317,14 +319,14 @@ def weight2crop(
 
     # determine the minimum rect
     ys, xs = np.where(weight_image >= beta)
-    r0 = g2.Rect(xs.min(), ys.min(), xs.max() + 1, ys.max() + 1)
+    r0 = geo2d.Rect(xs.min(), ys.min(), xs.max() + 1, ys.max() + 1)
     # print(r0)
     if square:
         # adjust to make it a square with the same center
         cx = r0.cx
         cy = r0.cy
         r = max(r0.w, r0.h) / 2
-        r0 = g2.Rect(cx - r, cy - r, cx + r, cy + r)
+        r0 = geo2d.Rect(cx - r, cy - r, cx + r, cy + r)
         # print(r0)
 
     # padding
@@ -332,7 +334,7 @@ def weight2crop(
     cy = r0.cy
     w2 = r0.w * (1 + padding) / 2
     h2 = r0.h * (1 + padding) / 2
-    r0 = g2.Rect(cx - w2, cy - h2, cx + w2, cy + h2)
+    r0 = geo2d.Rect(cx - w2, cy - h2, cx + w2, cy + h2)
     # print(r0)
     return r0
 
@@ -425,7 +427,7 @@ def estimate_cropping(
         else:
             cy = float(np.clip(cy, hh, src_imgres[1] - hh))
 
-    window = g2.Rect(cx - hw, cy - hh, cx + hw, cy + hh)
+    window = geo2d.Rect(cx - hw, cy - hh, cx + hw, cy + hh)
     out_cropping = Cropping(src_imgres, window=window, cropres=out_cropres)
 
     return out_cropping

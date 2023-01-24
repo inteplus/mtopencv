@@ -1,7 +1,5 @@
 """An self-contained image."""
 
-import typing as tp
-from mt import np, path, aio
 import cv2
 import base64
 import json
@@ -9,6 +7,7 @@ import turbojpeg as tj
 
 _tj = tj.TurboJPEG()
 
+from mt import tp, np, path, aio
 
 __all__ = [
     "PixelFormat",
