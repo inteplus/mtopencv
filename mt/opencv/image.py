@@ -7,7 +7,7 @@ import turbojpeg as tj
 
 _tj = tj.TurboJPEG()
 
-from mt import tp, np, path, aio
+from mt import tp, np, path, aio, base
 
 __all__ = [
     "PixelFormat",
@@ -142,9 +142,7 @@ class Image(object):
             if the provided group is not of type :class:`h5py.Group`
         """
 
-        import h5py
-
-        if not isinstance(h5_group, h5py.Group):
+        if not base.is_h5group(h5_group):
             raise ValueError("The provided group is not a h5py.Group instance.")
 
         h5_group.attrs["pixel_format"] = self.pixel_format
@@ -248,9 +246,7 @@ class Image(object):
             the loaded image with metadata
         """
 
-        import h5py
-
-        if not isinstance(h5_group, h5py.Group):
+        if not base.is_h5group(h5_group):
             raise ValueError("The provided group is not a h5py.Group instance.")
 
         # meta
