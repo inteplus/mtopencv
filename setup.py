@@ -9,9 +9,9 @@ setup(
     description="Minh-Tri Pham's extra modules using OpenCV",
     author=["Minh-Tri Pham"],
     packages=find_namespace_packages(include=["mt.*"]),
-    # scripts=[
-    #    "scripts/immview",
-    # ],
+    scripts=[
+        "scripts/draw_chessboard_corners",
+    ],
     install_requires=[
         # 'h5py>=3', # for pdh5 file format. Lazy import because TX2 may not need it.
         # 'opencv-python', # let them install opencv-python or opencv-python-headless or whatever
