@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
+import os
 from setuptools import setup, find_namespace_packages
-from mt.opencv.version import version
+
+VERSION_FILE = os.path.join(os.path.dirname(__file__), "VERSION.txt")
 
 setup(
     name="mtopencv",
-    version=version,
     description="Minh-Tri Pham's extra modules using OpenCV",
     author=["Minh-Tri Pham"],
     packages=find_namespace_packages(include=["mt.*"]),
@@ -17,7 +18,16 @@ setup(
         # 'opencv-python', # let them install opencv-python or opencv-python-headless or whatever
         "ansicolors",  # for displaying images on the terminal
         "pyturbojpeg",  # for encoding/decoding images
-        "mtbase>=3.8",  # to have mt.base.is_h5group
-        "mtgeo>=0.10",
+        "mtbase>=4.26",  # just updating
+        "mtgeo>=1.1",  # just updating
     ],
+    setup_requires=["setuptools-git-versioning<2"],
+    setuptools_git_versioning={
+        "enabled": True,
+        "version_file": VERSION_FILE,
+        "count_commits_from_version_file": True,
+        "template": "{tag}",
+        "dev_template": "{tag}.dev{ccount}+{branch}",
+        "dirty_template": "{tag}.post{ccount}",
+    },
 )

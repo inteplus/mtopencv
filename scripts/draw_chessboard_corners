@@ -11,7 +11,7 @@ objp[:, :2] = np.mgrid[0:9, 0:6].T.reshape(-1, 2)
 # Arrays to store object points and image points from all the images.
 objpoints = []  # 3d point in real world space
 imgpoints = []  # 2d points in image plane.
-vid = cv.VideoCapture(0)
+vid = cv.VideoCapture(2)
 print("Press ESC to quit.")
 while True:
     vid.grab()
