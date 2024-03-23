@@ -454,6 +454,7 @@ async def immsave_asyn(
     context_vars: dict = {},
     file_format: str = "hdf5",
     file_write_delayed: bool = False,
+    make_dirs: bool = False,
     logger=None,
 ):
     """An asyn function that saves an image with metadata to file.
@@ -481,6 +482,8 @@ async def immsave_asyn(
     file_write_delayed : bool
         Only valid in asynchronous mode and the format is 'json'. If True, wraps the file write
         task into a future and returns the future. In all other cases, proceeds as usual.
+    make_dirs : bool
+        Whether or not to make the folders containing the path before writing to the file.
     logger : logging.Logger, optional
         logger for debugging purposes
 
@@ -530,6 +533,7 @@ async def immsave_asyn(
                 file_mode=file_mode,
                 context_vars=context_vars,
                 file_write_delayed=file_write_delayed,
+                make_dirs=make_dirs,
             )
         else:
             retval = json.dump(json_obj, fp, indent=4)
@@ -546,6 +550,7 @@ def immsave(
     image_codec: str = "png",
     quality: tp.Optional[int] = None,
     file_format: str = "hdf5",
+    make_dirs: bool = False,
     logger=None,
 ):
     """Saves an image with metadata to file.
@@ -566,6 +571,8 @@ def immsave(
         a value between 0 and 9. If not provided, the backend default will be used.
     file_format : {'json', 'hdf5'}
         format to be used for saving the content.
+    make_dirs : bool
+        Whether or not to make the folders containing the path before writing to the file.
     logger : logging.Logger, optional
         logger for debugging purposes
 
@@ -582,6 +589,7 @@ def immsave(
         image_codec=image_codec,
         quality=quality,
         file_format=file_format,
+        make_dirs=make_dirs,
         logger=logger,
     )
 
@@ -626,6 +634,7 @@ async def imsave(
     file_mode: int = 0o664,
     context_vars: dict = {},
     file_write_delayed: bool = False,
+    make_dirs: bool = False,
 ):
     """An asyn function wrapping on :func:`cv.imwrite`.
 
@@ -646,6 +655,8 @@ async def imsave(
     file_write_delayed : bool
         Only valid in asynchronous mode. If True, wraps the file write task into a future and
         returns the future. In all other cases, proceeds as usual.
+    make_dirs : bool
+        Whether or not to make the folders containing the path before writing to the file.
 
     Returns
     -------
@@ -677,6 +688,7 @@ async def imsave(
         file_mode=file_mode,
         context_vars=context_vars,
         file_write_delayed=file_write_delayed,
+        make_dirs=make_dirs,
     )
 
 
