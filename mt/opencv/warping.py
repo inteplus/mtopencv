@@ -1,7 +1,7 @@
 """Affine-warping and cropping an image."""
 
 
-from mt import np
+from mt import tp, np
 import mt.geo2d as g2
 from . import cv2 as cv
 
@@ -10,8 +10,8 @@ __all__ = ["do_warp_image", "warp_image", "crop_image"]
 
 
 def do_warp_image(
-    out_image: np.ndarray,
-    in_image: np.ndarray,
+    out_image: tp.NDArray[np.uint8],
+    in_image: tp.NDArray[np.uint8],
     inv_tfm: g2.Aff2d,
     inter_mode: str = "nearest",
     border_mode: str = "constant",
@@ -49,8 +49,8 @@ def do_warp_image(
 
 
 def warp_image(
-    out_image: np.ndarray,
-    in_image: np.ndarray,
+    out_image: tp.NDArray[np.uint8],
+    in_image: tp.NDArray[np.uint8],
     warp_tfm: g2.Aff2d,
     inter_mode: str = "nearest",
     border_mode: str = "constant",
@@ -79,8 +79,8 @@ def warp_image(
 
 
 def crop_image(
-    out_image: np.ndarray,
-    in_image: np.ndarray,
+    out_image: tp.NDArray[np.uint8],
+    in_image: tp.NDArray[np.uint8],
     crop_rect: g2.Rect,
     inter_mode: str = "nearest",
     border_mode: str = "constant",
