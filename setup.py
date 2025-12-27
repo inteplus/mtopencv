@@ -18,8 +18,8 @@ setup(
         # 'opencv-python', # let them install opencv-python or opencv-python-headless or whatever
         "ansicolors",  # for displaying images on the terminal
         "pyturbojpeg",  # for encoding/decoding images
-        "mtbase>=4.33.2",  # just updating
-        "mtgeo>=1.1.13",  # just updating
+        "mtbase>=4.33.6",  # just updating
+        "mtgeo>=1.1.14",  # just updating
     ],
     setup_requires=["setuptools-git-versioning<2"],
     setuptools_git_versioning={

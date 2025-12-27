@@ -9,6 +9,7 @@ like an image transform.
 from mt import tp, np, geo2d
 from mt.base.deprecated import deprecated_func
 
+from . import cv2 as cv
 from .warping import do_warp_image
 
 
@@ -16,6 +17,7 @@ __all__ = [
     "Cropping",
     "weight2crop",
     "estimate_cropping",
+    "ultralytics_letterbox",
 ]
 
 
@@ -431,3 +433,63 @@ def estimate_cropping(
     out_cropping = Cropping(src_imgres, window=window, cropres=out_cropres)
 
     return out_cropping
+
+
+def ultralytics_letterbox(
+    image: np.ndarray, new_imgres: list = [640, 640]
+) -> tp.Tuple[np.ndarray, Cropping]:
+    """Ultralytics style letterbox resizing.
+
+    The image is scaled to fit in the new resolution while keeping the aspect ratio, and then
+    padded on every side such that the image is always at the center and the padding is minimal.
+
+    Parameters
+    ----------
+    image : numpy.ndarray
+        input image to be letterbox resized
+    new_imgres : list
+        pair of `[width, height]` defining the desired output image resolution
+
+    Returns
+    -------
+    numpy.ndarray
+        the output letterbox resized image
+    Cropping
+        the cropping mapping from the letterboxed image used as input to YOLO models to the
+        original image.
+    """
+
+    src_h, src_w = image.shape[0], image.shape[1]
+    dst_w, dst_h = new_imgres[0], new_imgres[1]
+
+    scale = min(dst_w / src_w, dst_h / src_h)
+    new_w = int(round(src_w * scale))
+    new_h = int(round(src_h * scale))
+
+    resized_image = cv.resize(image, (new_w, new_h), interpolation=cv.INTER_LINEAR)
+
+    pad_w = dst_w - new_w
+    pad_h = dst_h - new_h
+    pad_left = pad_w // 2
+    pad_right = pad_w - pad_left
+    pad_top = pad_h // 2
+    pad_bottom = pad_h - pad_top
+
+    letterbox_image = cv.copyMakeBorder(
+        resized_image,
+        pad_top,
+        pad_bottom,
+        pad_left,
+        pad_right,
+        borderType=cv.BORDER_CONSTANT,
+        value=[114, 114, 114],
+    )
+
+    window = geo2d.Rect(pad_left, pad_top, pad_left + new_w, pad_top + new_h)
+    cropping = Cropping(
+        imgres=[dst_w, dst_h],
+        window=window,
+        cropres=[src_w, src_h],
+    )
+
+    return letterbox_image, cropping
