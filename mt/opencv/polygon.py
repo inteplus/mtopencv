@@ -7,6 +7,7 @@ A polygon is defined as a list of 2D points, not necessarily in integers. We als
 from . import cv2 as _cv
 
 from mt import tp, np
+from mt.base import LogicError
 
 
 __all__ = [
@@ -92,7 +93,14 @@ def mask2ndpoly(mask: np.ndarray, epsilon: float = 1.0) -> np.ndarray:
     polygons = []
     for contour in contours:
         contour = contour.squeeze().astype(np.float32)
-        approx = _cv.approxPolyDP(contour, epsilon, True)
+        try:
+            approx = _cv.approxPolyDP(contour, epsilon, True)
+        except Exception as e:
+            raise LogicError(
+                "Error in invoking approxPolyDP",
+                debug={"contour": contour, "epsilon": epsilon},
+                causing_error=e,
+            )
         polygons.append(approx.squeeze())
     return polygons2ndpoly(polygons)
 
