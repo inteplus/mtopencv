@@ -1,14 +1,104 @@
-'''Extra functions dealing with polygons via OpenCV.'''
+"""Extra functions dealing with polygons via OpenCV.
+
+A polygon is defined as a list of 2D points, not necessarily in integers. We also define ndpoly
+(Nan delimited polygon) as a polygon that may contain NaN points to separate different parts.
+"""
 
 from . import cv2 as _cv
-import numpy as _np
+
+from mt import tp, np
 
 
-__all__ = ['render_mask', 'polygon2mask', 'morph_open']
+__all__ = [
+    "polygons2ndpoly",
+    "ndpoly2polygons",
+    "mask2ndpoly",
+    "ndpoly2mask",
+    "render_mask",
+    "polygon2mask",
+    "morph_open",
+]
+
+
+def polygons2ndpoly(polygons: tp.List[np.ndarray]) -> np.ndarray:
+    """Converts a list of polygons into an ndpoly (nan delimited polygon).
+
+    Parameters
+    ----------
+    polygons : list
+        a list of numpy arrays, each of which is a list of 2D points, not necessarily in integers
+
+    Returns
+    -------
+    numpy.ndarray
+        a single numpy array representing the ndpoly
+    """
+    ndpoly = []
+    for poly in polygons:
+        if len(ndpoly) > 0:
+            ndpoly.append(np.array([[np.nan, np.nan]]))
+        ndpoly.append(poly)
+    if len(ndpoly) == 0:
+        return np.empty((0, 2), dtype=np.float32)
+    return np.vstack(ndpoly)
+
+
+def ndpoly2polygons(ndpoly: np.ndarray) -> tp.List[np.ndarray]:
+    """Converts an ndpoly (nan delimited polygon) into a list of polygons.
+
+    Parameters
+    ----------
+    ndpoly : numpy.ndarray
+        a single numpy array representing the ndpoly
+
+    Returns
+    -------
+    list
+        a list of numpy arrays, each of which is a list of 2D points, not necessarily in integers
+    """
+    if len(ndpoly) == 0:
+        return []
+    isnan = np.isnan(ndpoly).any(axis=1)
+    split_indices = np.where(isnan)[0]
+    polygons = []
+    start_idx = 0
+    for idx in split_indices:
+        if idx > start_idx:
+            polygons.append(ndpoly[start_idx:idx])
+        start_idx = idx + 1
+    if start_idx < len(ndpoly):
+        polygons.append(ndpoly[start_idx:])
+    return polygons
+
+
+def mask2ndpoly(mask: np.ndarray, epsilon: float = 1.0) -> np.ndarray:
+    """Converts a binary mask into an ndpoly (nan delimited polygon).
+
+    Parameters
+    ----------
+    mask : numpy.ndarray
+        a 2D binary mask array
+    epsilon : float
+        the approximation accuracy parameter for polygonal approximation
+
+    Returns
+    -------
+    numpy.ndarray
+        a single numpy array representing the ndpoly
+    """
+    contours, _ = _cv.findContours(
+        mask.astype(np.uint8), _cv.RETR_EXTERNAL, _cv.CHAIN_APPROX_SIMPLE
+    )
+    polygons = []
+    for contour in contours:
+        contour = contour.squeeze().astype(np.float32)
+        approx = _cv.approxPolyDP(contour, epsilon, True)
+        polygons.append(approx.squeeze())
+    return polygons2ndpoly(polygons)
 
 
 def render_mask(contours, out_imgres, thickness=-1, debug=False):
-    '''Renders a mask array from a list of contours.
+    """Renders a mask array from a list of contours.
 
     Parameters
     ----------
@@ -19,25 +109,55 @@ def render_mask(contours, out_imgres, thickness=-1, debug=False):
     thickness : int32
         negative to fill interior, positive for thickness of the boundary
     debug : bool
-        If True, output an uint8 mask image with 0 being negative and 255 being positive. Otherwise, output a float32 mask image with 0.0 being negative and 1.0 being positive.
-    
+        If True, output an uint8 mask image with 0 being negative and 255 being positive. Otherwise,
+        output a float32 mask image with 0.0 being negative and 1.0 being positive.
+
     Returns
     -------
     numpy.ndarray
         a 2D array of resolution `out_imgres` representing the mask
-    '''
-    int_contours = [x.astype(_np.int32) for x in contours]
+    """
+    int_contours = [x.astype(np.int32) for x in contours]
     if debug:
-        mask = _np.zeros((out_imgres[1], out_imgres[0]), dtype=_np.uint8)
+        mask = np.zeros((out_imgres[1], out_imgres[0]), dtype=np.uint8)
         _cv.drawContours(mask, int_contours, -1, 255, thickness)
     else:
-        mask = _np.zeros((out_imgres[1], out_imgres[0]), dtype=_np.float32)
+        mask = np.zeros((out_imgres[1], out_imgres[0]), dtype=np.float32)
         _cv.drawContours(mask, int_contours, -1, 1.0, thickness)
     return mask
 
 
+def ndpoly2mask(
+    ndpoly: np.ndarray,
+    out_imgres: tp.List[int],
+    thickness: int = -1,
+    debug: bool = False,
+) -> np.ndarray:
+    """Renders a mask array from an ndpoly (nan delimited polygon).
+
+    Parameters
+    ----------
+    ndpoly : numpy.ndarray
+        a single numpy array representing the ndpoly
+    out_imgres : list
+        the [width, height] image resolution of the output mask.
+    thickness : int32
+        negative to fill interior, positive for thickness of the boundary
+    debug : bool
+        If True, output an uint8 mask image with 0 being negative and 255 being positive. Otherwise,
+        output a float32 mask image with 0.0 being negative and 1.0 being positive.
+
+    Returns
+    -------
+    numpy.ndarray
+        a 2D array of resolution `out_imgres` representing the mask
+    """
+    contours = ndpoly2polygons(ndpoly)
+    return render_mask(contours, out_imgres, thickness, debug)
+
+
 def polygon2mask(polygon, padding=0):
-    '''Converts the interior of a polygon into an uint8 mask image with padding.
+    """Converts the interior of a polygon into an uint8 mask image with padding.
 
     Parameters
     ----------
@@ -52,26 +172,26 @@ def polygon2mask(polygon, padding=0):
         an uint8 2D image with 0 being zero and 255 being one representing the interior of the polygon, plus padding
     offset : numpy.array(shape=(2,))
         `(offset_x, offset_y)`. Each polygon's interior pixel is located at `img[offset_y+y,m offset_x+x]` and with value 255
-    '''
+    """
     # compliance
-    polygon = polygon.astype(_np.int32)
+    polygon = polygon.astype(np.int32)
 
     # estimate boundaries
     tl = polygon.min(axis=0)
     br = polygon.max(axis=0)
     offset = tl - padding
-    width, height = br + (padding+1) - offset
+    width, height = br + (padding + 1) - offset
     polygon -= offset
 
     # draw polygon
-    img = _np.zeros((height, width), dtype=_np.uint8)
+    img = np.zeros((height, width), dtype=np.uint8)
     _cv.fillPoly(img, [polygon], 255)
 
     return img, offset
 
 
 def morph_open(polygon, ksize=3):
-    '''Applies a morphological opening operation on the interior of a polygon to form a more human-like polygon.
+    """Applies a morphological opening operation on the interior of a polygon to form a more human-like polygon.
 
     Parameters
     ----------
@@ -84,17 +204,16 @@ def morph_open(polygon, ksize=3):
     -------
     polygons : list of numpy arrays
         list of output polygons, because morphological opening can split a thin polygon into a few parts
-    '''
+    """
     # get the mask
-    img, offset = polygon2mask(polygon, (ksize+1)//2)
+    img, offset = polygon2mask(polygon, (ksize + 1) // 2)
 
     # morphological opening
     sem = _cv.getStructuringElement(_cv.MORPH_RECT, (ksize, ksize))
     img2 = _cv.morphologyEx(img, _cv.MORPH_OPEN, sem)
 
     contours, _ = _cv.findContours(img2, _cv.RETR_EXTERNAL, _cv.CHAIN_APPROX_SIMPLE)
-    #return img, img2, offset, contours, hier
+    # return img, img2, offset, contours, hier
 
-    contours = [x.squeeze()+offset for x in contours]
+    contours = [x.squeeze() + offset for x in contours]
     return contours
-
