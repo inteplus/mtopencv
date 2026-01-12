@@ -87,9 +87,8 @@ def mask2ndpoly(mask: np.ndarray, epsilon: float = 1.0) -> np.ndarray:
     numpy.ndarray
         a single numpy array representing the ndpoly
     """
-    contours, _ = _cv.findContours(
-        mask.astype(np.uint8), _cv.RETR_EXTERNAL, _cv.CHAIN_APPROX_SIMPLE
-    )
+    mask = np.ascontiguousarray(mask.astype(np.uint8))
+    contours, _ = _cv.findContours(mask, _cv.RETR_EXTERNAL, _cv.CHAIN_APPROX_SIMPLE)
     polygons = []
     for contour in contours:
         contour = contour.squeeze().astype(np.float32)
