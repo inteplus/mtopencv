@@ -92,6 +92,9 @@ def mask2ndpoly(mask: np.ndarray, epsilon: float = 1.0) -> np.ndarray:
     polygons = []
     for contour in contours:
         contour = contour.squeeze().astype(np.float32)
+        if True:
+            polygons.append(contour)
+            continue
         if len(contour) < 3:
             continue
         try:
