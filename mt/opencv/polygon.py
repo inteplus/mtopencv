@@ -93,6 +93,8 @@ def mask2ndpoly(mask: np.ndarray, epsilon: float = 1.0) -> np.ndarray:
     polygons = []
     for contour in contours:
         contour = contour.squeeze().astype(np.float32)
+        if len(contour) < 3:
+            continue
         try:
             approx = _cv.approxPolyDP(contour, epsilon, True)
         except Exception as e:
