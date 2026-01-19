@@ -4,10 +4,11 @@ A polygon is defined as a list of 2D points, not necessarily in integers. We als
 (Nan delimited polygon) as a polygon that may contain NaN points to separate different parts.
 """
 
+import shapely
+
 from . import cv2 as _cv
 
 from mt import tp, np
-from mt.base import LogicError
 
 
 __all__ = [
@@ -15,6 +16,8 @@ __all__ = [
     "ndpoly2polygons",
     "mask2ndpoly",
     "ndpoly2mask",
+    "ndpoly2MultiPolygon",
+    "MultiPolygon2ndpoly",
     "render_mask",
     "polygon2mask",
     "morph_open",
@@ -153,6 +156,51 @@ def ndpoly2mask(
     """
     contours = ndpoly2polygons(ndpoly)
     return render_mask(contours, out_imgres, thickness, debug)
+
+
+def ndpoly2MultiPolygon(ndpoly: np.ndarray) -> shapely.MultiPolygon:
+    """Converts an ndpoly (nan delimited polygon) into a Shapely MultiPolygon.
+
+    Parameters
+    ----------
+    ndpoly : numpy.ndarray
+        a single numpy array representing the ndpoly
+
+    Returns
+    -------
+    shapely.MultiPolygon
+        a Shapely MultiPolygon object
+    """
+    polygons = ndpoly2polygons(ndpoly)
+    shapely_polygons = []
+    for poly in polygons:
+        if len(poly) < 3:
+            continue
+        shapely_polygons.append(shapely.Polygon(poly))
+    if len(shapely_polygons) == 0:
+        return shapely.MultiPolygon()
+    return shapely.MultiPolygon(shapely_polygons)
+
+
+def MultiPolygon2ndpoly(multipolygon: shapely.MultiPolygon) -> np.ndarray:
+    """Converts a Shapely MultiPolygon into an ndpoly (nan delimited polygon).
+
+    Parameters
+    ----------
+    multipolygon : shapely.MultiPolygon
+        a Shapely MultiPolygon object
+
+    Returns
+    -------
+    numpy.ndarray
+        a single numpy array representing the ndpoly
+    """
+    polygons = []
+    for poly in multipolygon.geoms:
+        exterior_coords = np.array(poly.exterior.coords, dtype=np.float32)
+        exterior_coords = exterior_coords[:-1]  # remove duplicated last point
+        polygons.append(exterior_coords)
+    return polygons2ndpoly(polygons)
 
 
 def polygon2mask(polygon, padding=0):

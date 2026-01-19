@@ -8,7 +8,7 @@ VERSION_FILE = os.path.join(os.path.dirname(__file__), "VERSION.txt")
 setup(
     name="mtopencv",
     description="Minh-Tri Pham's extra modules using OpenCV",
-    author=["Minh-Tri Pham"],
+    author="Minh-Tri Pham",
     packages=find_namespace_packages(include=["mt.*"]),
     scripts=[
         "scripts/draw_chessboard_corners",
@@ -17,6 +17,7 @@ setup(
         # 'h5py>=3', # for pdh5 file format. Lazy import because TX2 may not need it.
         # 'opencv-python', # let them install opencv-python or opencv-python-headless or whatever
         "ansicolors",  # for displaying images on the terminal
+        "shapely>=2.1.2",  # for polygon manipulations
         "pyturbojpeg",  # for encoding/decoding images
         "mtbase>=4.33.6",  # just updating
         "mtgeo>=1.1.14",  # just updating
