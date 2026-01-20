@@ -195,6 +195,9 @@ def MultiPolygon2ndpoly(multipolygon: shapely.MultiPolygon) -> np.ndarray:
     numpy.ndarray
         a single numpy array representing the ndpoly
     """
+    if isinstance(multipolygon, shapely.Polygon):
+        multipolygon = shapely.MultiPolygon([multipolygon])
+
     polygons = []
     for poly in multipolygon.geoms:
         if isinstance(poly, shapely.Polygon) is False:
