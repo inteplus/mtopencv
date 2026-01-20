@@ -17,7 +17,7 @@ setup(
         # 'h5py>=3', # for pdh5 file format. Lazy import because TX2 may not need it.
         # 'opencv-python', # let them install opencv-python or opencv-python-headless or whatever
         "ansicolors",  # for displaying images on the terminal
-        "shapely>=2.1.2",  # for polygon manipulations
+        "shapely",  # for polygon manipulations
         "pyturbojpeg",  # for encoding/decoding images
         "mtbase>=4.33.6",  # just updating
         "mtgeo>=1.1.14",  # just updating
