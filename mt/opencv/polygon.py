@@ -197,6 +197,8 @@ def MultiPolygon2ndpoly(multipolygon: shapely.MultiPolygon) -> np.ndarray:
     """
     polygons = []
     for poly in multipolygon.geoms:
+        if isinstance(poly, shapely.Polygon) is False:
+            continue
         exterior_coords = np.array(poly.exterior.coords, dtype=np.float32)
         exterior_coords = exterior_coords[:-1]  # remove duplicated last point
         polygons.append(exterior_coords)
