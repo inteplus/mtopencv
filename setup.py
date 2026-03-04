@@ -18,7 +18,7 @@ setup(
         # 'opencv-python', # let them install opencv-python or opencv-python-headless or whatever
         "ansicolors",  # for displaying images on the terminal
         "shapely",  # for polygon manipulations
-        "pyturbojpeg",  # for encoding/decoding images
+        "pyturbojpeg<2.0",  # for encoding/decoding images, to avoid requiring new libturbojpeg
         "mtbase>=4.33.6",  # just updating
         "mtgeo>=1.1.14",  # just updating
     ],
