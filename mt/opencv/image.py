@@ -3,9 +3,6 @@
 import cv2
 import base64
 import json
-import turbojpeg as tj
-
-_tj = tj.TurboJPEG()
 
 from mt import tp, np, path, aio, base
 
@@ -26,14 +23,78 @@ __all__ = [
 
 
 PixelFormat = {
-    "rgb": (tj.TJPF_RGB, 3, tj.TJSAMP_422),
-    "bgr": (tj.TJPF_BGR, 3, tj.TJSAMP_422),
-    "rgba": (tj.TJPF_RGBA, 4, tj.TJSAMP_422),
-    "bgra": (tj.TJPF_BGRA, 4, tj.TJSAMP_422),
-    "argb": (tj.TJPF_ARGB, 4, tj.TJSAMP_422),
-    "abgr": (tj.TJPF_ABGR, 4, tj.TJSAMP_422),
-    "gray": (tj.TJPF_GRAY, 1, tj.TJSAMP_GRAY),
+    "rgb": 3,
+    "bgr": 3,
+    "rgba": 4,
+    "bgra": 4,
+    "argb": 4,
+    "abgr": 4,
+    "gray": 1,
 }
+
+_RGB_INDICES = {
+    "rgb": (0, 1, 2),
+    "bgr": (2, 1, 0),
+    "rgba": (0, 1, 2),
+    "bgra": (2, 1, 0),
+    "argb": (1, 2, 3),
+    "abgr": (3, 2, 1),
+}
+
+
+def _alpha_channel_index(pixel_format: str) -> int:
+    return pixel_format.find("a")
+
+
+def _to_cv_image(image, pixel_format: str):
+    if pixel_format == "gray":
+        return image
+    r_idx, g_idx, b_idx = _RGB_INDICES[pixel_format]
+    return np.ascontiguousarray(image[:, :, [b_idx, g_idx, r_idx]])
+
+
+def _from_cv_image(image, pixel_format: str):
+    if pixel_format == "gray":
+        return image
+
+    nchannels = PixelFormat[pixel_format]
+    out = np.empty((image.shape[0], image.shape[1], nchannels), dtype=image.dtype)
+    r_idx, g_idx, b_idx = _RGB_INDICES[pixel_format]
+    out[:, :, r_idx] = image[:, :, 2]
+    out[:, :, g_idx] = image[:, :, 1]
+    out[:, :, b_idx] = image[:, :, 0]
+
+    a_idx = _alpha_channel_index(pixel_format)
+    if a_idx >= 0:
+        out[:, :, a_idx] = 255
+
+    return out
+
+
+def _encode_jpeg(image, quality: tp.Optional[int]):
+    if quality is None:
+        retval, arr = cv2.imencode(".jpg", image)
+    else:
+        params = [cv2.IMWRITE_JPEG_QUALITY, quality]
+        retval, arr = cv2.imencode(".jpg", image, params)
+
+    if not retval:
+        raise RuntimeError(
+            "Unable to use OpenCV to jpg-encode the image of shape {}.".format(
+                image.shape
+            )
+        )
+
+    return arr.tobytes()
+
+
+def _decode_jpeg(buf: bytes, gray: bool = False):
+    flags = cv2.IMREAD_GRAYSCALE if gray else cv2.IMREAD_COLOR
+    arr = np.frombuffer(buf, dtype=np.uint8)
+    image = cv2.imdecode(arr, flags)
+    if image is None:
+        raise RuntimeError("Unable to use OpenCV to jpg-decode image bytes.")
+    return image
 
 
 class Image(object):
@@ -89,13 +150,9 @@ class Image(object):
         json_obj["meta"] = self.meta
 
         # image
-        tj_params = PixelFormat[self.pixel_format]
         if image_codec == "jpg":
-            img_bytes = _tj.encode(
-                self.image,
-                quality=quality,
-                pixel_format=tj_params[0],
-                jpeg_subsample=tj_params[2],
+            img_bytes = _encode_jpeg(
+                _to_cv_image(self.image, self.pixel_format), quality
             )
         elif image_codec == "png":
             raise NotImplementedError
@@ -105,15 +162,10 @@ class Image(object):
         json_obj["image"] = encoded.decode("ascii")
 
         if self.pixel_format != "gray":
-            a_id = self.pixel_format.find("a")
+            a_id = _alpha_channel_index(self.pixel_format)
             if a_id >= 0:  # has alpha channel
                 alpha_image = np.ascontiguousarray(self.image[:, :, a_id : a_id + 1])
-                img_bytes = _tj.encode(
-                    alpha_image,
-                    quality=quality,
-                    pixel_format=tj.TJPF_GRAY,
-                    jpeg_subsample=tj.TJSAMP_GRAY,
-                )
+                img_bytes = _encode_jpeg(alpha_image, quality)
                 encoded = base64.b64encode(img_bytes)
                 json_obj["alpha"] = encoded.decode("ascii")
 
@@ -154,13 +206,9 @@ class Image(object):
         h5_group.attrs["meta"] = json.dumps(self.meta)
 
         # image
-        tj_params = PixelFormat[self.pixel_format]
         if image_codec == "jpg":
-            img_bytes = _tj.encode(
-                self.image,
-                quality=quality,
-                pixel_format=tj_params[0],
-                jpeg_subsample=tj_params[2],
+            img_bytes = _encode_jpeg(
+                _to_cv_image(self.image, self.pixel_format), quality
             )
             h5_group.create_dataset(
                 "image",
@@ -184,15 +232,10 @@ class Image(object):
             raise ValueError("Unknown image codec '{}'.".format(image_codec))
 
         if image_codec == "jpg" and self.pixel_format != "gray":
-            a_id = self.pixel_format.find("a")
+            a_id = _alpha_channel_index(self.pixel_format)
             if a_id >= 0:  # has alpha channel
                 alpha_image = np.ascontiguousarray(self.image[:, :, a_id : a_id + 1])
-                img_bytes = _tj.encode(
-                    alpha_image,
-                    quality=quality,
-                    pixel_format=tj.TJPF_GRAY,
-                    jpeg_subsample=tj.TJSAMP_GRAY,
-                )
+                img_bytes = _encode_jpeg(alpha_image, quality)
                 h5_group.create_dataset(
                     "alpha",
                     data=np.frombytes(img_bytes),
@@ -220,13 +263,18 @@ class Image(object):
         meta = json_obj["meta"]
 
         decoded = base64.b64decode(json_obj["image"])
-        image = _tj.decode(decoded, pixel_format=PixelFormat[pixel_format][0])
+        if pixel_format == "gray":
+            image = _decode_jpeg(decoded, gray=True)
+        else:
+            image = _from_cv_image(_decode_jpeg(decoded, gray=False), pixel_format)
 
         if pixel_format != "gray":
-            a_id = pixel_format.find("a")
+            a_id = _alpha_channel_index(pixel_format)
             if a_id >= 0:  # has alpha channel
                 decoded = base64.b64decode(json_obj["alpha"])
-                alpha_image = _tj.decode(decoded, pixel_format=tj.TJPF_GRAY)
+                alpha_image = _decode_jpeg(decoded, gray=True)
+                if len(alpha_image.shape) == 2:
+                    alpha_image = alpha_image[:, :, None]
                 image[:, :, a_id : a_id + 1] = alpha_image
 
         return Image(image, pixel_format=pixel_format, meta=meta)
@@ -259,16 +307,21 @@ class Image(object):
                 decoded = h5_group["image"][:].tobytes()
             else:  # attribute?
                 decoded = h5_group.attrs["image"].tobytes()
-            image = _tj.decode(decoded, pixel_format=PixelFormat[pixel_format][0])
+            if pixel_format == "gray":
+                image = _decode_jpeg(decoded, gray=True)
+            else:
+                image = _from_cv_image(_decode_jpeg(decoded, gray=False), pixel_format)
 
             if pixel_format != "gray":
-                a_id = pixel_format.find("a")
+                a_id = _alpha_channel_index(pixel_format)
                 if a_id >= 0:  # has alpha channel
                     if "alpha" in h5_group:
                         decoded = h5_group["alpha"][:].tobytes()
                     else:
                         decoded = h5_group.attrs["alpha"].tobytes()
-                    alpha_image = _tj.decode(decoded, pixel_format=tj.TJPF_GRAY)
+                    alpha_image = _decode_jpeg(decoded, gray=True)
+                    if len(alpha_image.shape) == 2:
+                        alpha_image = alpha_image[:, :, None]
                     image[:, :, a_id : a_id + 1] = alpha_image
         else:  # png
             image = cv2.imdecode(h5_group["image"][:], cv2.IMREAD_UNCHANGED)
