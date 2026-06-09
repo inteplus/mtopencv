@@ -22,13 +22,13 @@ setup(
         "mtbase>=4.33.6",  # just updating
         "mtgeo>=1.1.14",  # just updating
     ],
-    setup_requires=["setuptools-git-versioning<2"],
+    setup_requires=["setuptools-git-versioning>=3,<4"],
     setuptools_git_versioning={
         "enabled": True,
         "version_file": VERSION_FILE,
         "count_commits_from_version_file": True,
         "template": "{tag}",
-        "dev_template": "{tag}.dev{ccount}+{branch}",
-        "dirty_template": "{tag}.post{ccount}",
+        "dev_template": "{tag}",
+        "dirty_template": "{tag}",
     },
 )
