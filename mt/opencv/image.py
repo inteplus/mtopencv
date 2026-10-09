@@ -80,9 +80,7 @@ def _encode_jpeg(image, quality: tp.Optional[int]):
 
     if not retval:
         raise RuntimeError(
-            "Unable to use OpenCV to jpg-encode the image of shape {}.".format(
-                image.shape
-            )
+            f"Unable to use OpenCV to jpg-encode the image of shape {image.shape}."
         )
 
     return arr.tobytes()
@@ -158,7 +156,7 @@ class Image(object):
         elif image_codec == "png":
             raise NotImplementedError
         else:
-            raise ValueError("Unknown image codec '{}'.".format(image_codec))
+            raise ValueError(f"Unknown image codec '{image_codec}'.")
         encoded = base64.b64encode(img_bytes)
         json_obj["image"] = encoded.decode("ascii")
 
@@ -224,13 +222,11 @@ class Image(object):
                 retval, x = cv2.imencode(".png", self.image, params)
             if not retval:
                 raise RuntimeError(
-                    "Unable to use OpenCV to png-encode the image of shape {}.".format(
-                        image.shape
-                    )
+                    f"Unable to use OpenCV to png-encode the image of shape {image.shape}."
                 )
             h5_group["image"] = x
         else:
-            raise ValueError("Unknown image codec '{}'.".format(image_codec))
+            raise ValueError(f"Unknown image codec '{image_codec}'.")
 
         if image_codec == "jpg" and self.pixel_format != "gray":
             a_id = _alpha_channel_index(self.pixel_format)
@@ -376,7 +372,7 @@ async def immload_asyn(fp, context_vars: dict = {}):
     except json.decoder.JSONDecodeError:
         if isinstance(fp, str):
             raise OSError(
-                "Unable to json-load filepath '{}'. It may be corrupted.".format(fp)
+                f"Unable to json-load filepath '{fp}'. It may be corrupted."
             )
         else:
             raise OSError("Unable to json-load. The file may be corrupted.")
@@ -457,7 +453,7 @@ async def immload_header_asyn(fp, context_vars: dict = {}):
         except json.decoder.JSONDecodeError:
             if isinstance(fp, str):
                 raise OSError(
-                    "Unable to json-load filepath '{}'. It may be corrupted.".format(fp)
+                    f"Unable to json-load filepath '{fp}'. It may be corrupted."
                 )
             else:
                 raise OSError("Unable to json-load. The file may be corrupted.")
@@ -565,9 +561,7 @@ async def immsave_asyn(
 
         if not isinstance(fp, str):
             raise ValueError(
-                "For hdf5 format, argument 'fp' must be a string. Got: {}.".format(
-                    type(fp)
-                )
+                f"For hdf5 format, argument 'fp' must be a string. Got: {type(fp)}."
             )
 
         async with aio.CreateFileH5(
@@ -592,7 +586,7 @@ async def immsave_asyn(
         else:
             retval = json.dump(json_obj, fp, indent=4)
     else:
-        raise ValueError("Unnkown file format '{}'.".format(file_format))
+        raise ValueError(f"Unnkown file format '{file_format}'.")
 
     return retval
 

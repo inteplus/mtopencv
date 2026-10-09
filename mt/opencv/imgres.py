@@ -111,7 +111,7 @@ def get_center_window(aspect_ratio, src_imgres, alpha=1.0):
     """
 
     if alpha <= 0:
-        raise ValueError("A non-positive 'alpha' has been detected: {}.".format(alpha))
+        raise ValueError(f"A non-positive 'alpha' has been detected: {alpha}.")
 
     sw = src_imgres[0] * alpha
     sh = src_imgres[1] * alpha
@@ -253,7 +253,7 @@ def get_thumbnail_imgres(raw_imgres: list, large: bool = False) -> list:
         name = "pal169" if large else "ws_cif"
     else:
         raise NotImplementedError(
-            "Aspect ratio {} not yet implemented for imgres {}.".format(ar, raw_imgres)
+            f"Aspect ratio {ar} not yet implemented for imgres {raw_imgres}."
         )
 
     return name2imgres[name]

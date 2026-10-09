@@ -54,9 +54,7 @@ class Cropping:
         self.cropres = cropres
 
     def __repr__(self):
-        return "Cropping(imgres={}, window={}, cropres={})".format(
-            self.imgres, self.window, self.cropres
-        )
+        return f"Cropping(imgres={self.imgres}, window={self.window}, cropres={self.cropres})"
 
     def to_json(self):
         return {
@@ -215,18 +213,14 @@ class Cropping:
 
         if in_image.shape[2] > 4:
             raise NotImplementedError(
-                "OpenCV requires the maximum number of channels be 4. {} given.".format(
-                    in_image.shape[2]
-                )
+                f"OpenCV requires the maximum number of channels be 4. {in_image.shape[2]} given."
             )
 
         if False:
             in_imgres = [in_image.shape[1], in_image.shape[0]]
             if in_imgres != self.imgres:
                 raise ValueError(
-                    "Expect the imgres to be {}. But {} given.".format(
-                        self.imgres, in_imgres
-                    )
+                    f"Expect the imgres to be {self.imgres}. But {in_imgres} given."
                 )
 
         if out_image is None:
@@ -238,9 +232,7 @@ class Cropping:
         out_imgres = [out_image.shape[1], out_image.shape[0]]
         if out_imgres != self.cropres:
             raise ValueError(
-                "Expect the cropres to be {}. But {} given.".format(
-                    self.cropres, out_imgres
-                )
+                f"Expect the cropres to be {self.cropres}. But {out_imgres} given."
             )
 
         inv_tfm = ~self.get_img2crop_tfm()
@@ -290,13 +282,13 @@ def weight2crop(
     """
 
     if alpha < 0 or alpha >= 1:
-        raise ValueError("Alpha must be in interval [0,1). Got {}.".format(alpha))
+        raise ValueError(f"Alpha must be in interval [0,1). Got {alpha}.")
 
     if padding < 0:
-        raise ValueError("Padding must be non-negative. Got {}.".format(padding))
+        raise ValueError(f"Padding must be non-negative. Got {padding}.")
 
     if thresh < 0:
-        raise ValueError("Threshold must be non-negative. Got {}.".format(thresh))
+        raise ValueError(f"Threshold must be non-negative. Got {thresh}.")
 
     weight_image = np.where(weight_image >= thresh, weight_image, 0.0)
 
