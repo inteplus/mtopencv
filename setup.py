@@ -9,6 +9,8 @@ setup(
     name="mtopencv",
     description="Minh-Tri Pham's extra modules using OpenCV",
     author="Minh-Tri Pham",
+    license="MIT",
+    license_files=["LICENSE"],
     packages=find_namespace_packages(include=["mt.*"]),
     scripts=[
         "scripts/draw_chessboard_corners",
