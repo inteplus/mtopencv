@@ -84,7 +84,8 @@ def aspect_ratio(imgres):
 
 
 def get_center_window(aspect_ratio, src_imgres, alpha=1.0):
-    """Returns a center window of the source image that preserves the width-over-height aspect ratio.
+    """Returns a center window of the source image that preserves the width-over-height aspect
+    ratio.
 
     The center window is defined in the following:
 
@@ -136,7 +137,8 @@ def get_center_window(aspect_ratio, src_imgres, alpha=1.0):
     docstring_prefix="    ",
 )
 def get_center_window_tfm(dst_imgres, src_imgres, alpha=1.0):
-    """Returns a 2D affine transformation that maps pixels in a source image to pixels in a destination image that reflects a center window of the source image.
+    """Returns a 2D affine transformation that maps pixels in a source image to pixels in a
+    destination image that reflects a center window of the source image.
 
     The center window is defined in the following:
 
@@ -146,7 +148,8 @@ def get_center_window_tfm(dst_imgres, src_imgres, alpha=1.0):
        - Its aspect ratio is the same as that of the destination image resolution.
        - It is as large as possible.
 
-    The function returns a transformation. One can use a warping function to warp the image and then crop using the destination imgres.
+    The function returns a transformation. One can use a warping function to warp the image and then
+    crop using the destination imgres.
 
     Parameters
     ----------

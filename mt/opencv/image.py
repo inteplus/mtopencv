@@ -98,7 +98,8 @@ def _decode_jpeg(buf: bytes, gray: bool = False):
 
 
 class Image(object):
-    """A self-contained image, where the meta-data associated with the image are kept together with the image itself.
+    """A self-contained image, where the meta-data associated with the image are kept together with
+    the image itself.
 
     Parameters
     ----------
@@ -698,7 +699,8 @@ async def imsave(
     img : numpy.ndarray
         the image to be saved
     params : int
-        Format-specific parameters, if any. Like those 'cv.IMWRITE_xxx' flags. See :func:`cv.imwrite`.
+        Format-specific parameters, if any. Like those 'cv.IMWRITE_xxx' flags. See
+        :func:`cv.imwrite`.
     file_mode : int
         file mode to be set to using :func:`os.chmod`. Only valid if fp is a string. If None is
         given, no setting of file mode will happen.
@@ -753,7 +755,8 @@ def im_float2ubyte(img: np.ndarray, is_float01: bool = True):
     img : nd.ndarray
         the image to be converted
     is_float01 : bool
-        whether the pixel values of the float image are in range [0,1] (True) or range [-1,1] (False)
+        whether the pixel values of the float image are in range [0,1] (True) or range [-1,1]
+        (False)
 
     Returns
     -------

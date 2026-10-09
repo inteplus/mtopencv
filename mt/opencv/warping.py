@@ -16,7 +16,8 @@ def do_warp_image(
     inter_mode: str = "nearest",
     border_mode: str = "constant",
 ):
-    """Takes an inverse warping transformation which goes from output image to input image and warps the input image.
+    """Takes an inverse warping transformation which goes from output image to input image and warps
+    the input image.
 
     Parameters
     ----------
@@ -55,7 +56,8 @@ def warp_image(
     inter_mode: str = "nearest",
     border_mode: str = "constant",
 ):
-    """Takes a warping transformation mapping input image coordinates to the unit square, scales it to the output resolution, then warps the input image.
+    """Takes a warping transformation mapping input image coordinates to the unit square, scales it
+    to the output resolution, then warps the input image.
 
     Parameters
     ----------

@@ -130,7 +130,8 @@ class Cropping:
 
         if self.cropres != other.imgres:
             raise ValueError(
-                "The cropres of the current cropping {} is different from the imgres of the other cropping {}.".format(
+                "The cropres of the current cropping {} is different from the imgres of the other "
+                "cropping {}.".format(
                     self.cropres, other.imgres
                 )
             )
@@ -165,7 +166,8 @@ class Cropping:
 
         if self.imgres != other.imgres:
             raise ValueError(
-                "The imgres of the current cropping {} is different from the imgres of the other cropping {}.".format(
+                "The imgres of the current cropping {} is different from the imgres of the other "
+                "cropping {}.".format(
                     self.imgres, other.imgres
                 )
             )

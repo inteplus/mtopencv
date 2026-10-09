@@ -20,7 +20,8 @@ def get_screen_imgres(margin:int = 7) -> list:
     Parameters
     ----------
     margin : int
-        Only valid if imgres is None. The argument specifies the number of letters in both width and height to be preserved as margin
+        Only valid if imgres is None. The argument specifies the number of letters in both width and
+        height to be preserved as margin
 
     Returns
     -------
@@ -56,7 +57,8 @@ def to_ansi(img, imgres=None, margin=7):
         pair of [width, height] defining the target resolution. If not specified,
         we estimate from the current terminal.
     margin : int
-        Only valid if imgres is None. The argument specifies the number of letters in both width and height to be preserved as margin
+        Only valid if imgres is None. The argument specifies the number of letters in both width and
+        height to be preserved as margin
 
     Returns
     -------

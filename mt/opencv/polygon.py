@@ -221,9 +221,11 @@ def polygon2mask(polygon, padding=0):
     Returns
     -------
     img : numpy.array of shape (height, width)
-        an uint8 2D image with 0 being zero and 255 being one representing the interior of the polygon, plus padding
+        an uint8 2D image with 0 being zero and 255 being one representing the interior of the
+        polygon, plus padding
     offset : numpy.array(shape=(2,))
-        `(offset_x, offset_y)`. Each polygon's interior pixel is located at `img[offset_y+y,m offset_x+x]` and with value 255
+        `(offset_x, offset_y)`. Each polygon's interior pixel is located at
+        `img[offset_y+y,m offset_x+x]` and with value 255
     """
     # compliance
     polygon = polygon.astype(np.int32)
@@ -243,7 +245,8 @@ def polygon2mask(polygon, padding=0):
 
 
 def morph_open(polygon, ksize=3):
-    """Applies a morphological opening operation on the interior of a polygon to form a more human-like polygon.
+    """Applies a morphological opening operation on the interior of a polygon to form a more
+    human-like polygon.
 
     Parameters
     ----------
@@ -255,7 +258,8 @@ def morph_open(polygon, ksize=3):
     Returns
     -------
     polygons : list of numpy arrays
-        list of output polygons, because morphological opening can split a thin polygon into a few parts
+        list of output polygons, because morphological opening can split a thin polygon into a few
+        parts
     """
     # get the mask
     img, offset = polygon2mask(polygon, (ksize + 1) // 2)
