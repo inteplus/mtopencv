@@ -123,7 +123,7 @@ def ndpoly2polygons(ndpoly: np.ndarray) -> tp.List[np.ndarray]:
     return polygons
 
 
-def mask2ndpoly(mask: np.ndarray, epsilon: float = 1.0) -> np.ndarray:
+def mask2ndpoly(mask: np.ndarray) -> np.ndarray:
     """Converts a binary mask into an ndpoly (nan delimited polygon).
 
     The external contour of every connected component of the mask is extracted with
@@ -134,8 +134,6 @@ def mask2ndpoly(mask: np.ndarray, epsilon: float = 1.0) -> np.ndarray:
     mask : numpy.ndarray
         a 2D binary mask array of shape `(height, width)`. It is converted to uint8, so any non-zero
         value of a boolean or integer mask is foreground.
-    epsilon : float, optional
-        unused at the moment. Default is 1.0.
 
     Returns
     -------

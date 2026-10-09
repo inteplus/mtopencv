@@ -14,7 +14,7 @@ setup(
         "scripts/draw_chessboard_corners",
     ],
     install_requires=[
-        # 'h5py>=3', # for pdh5 file format. Lazy import because TX2 may not need it.
+        # 'h5py>=3', # for the 'hdf5' image file format. Lazy import because TX2 may not need it.
         # 'opencv-python', # let them install opencv-python or opencv-python-headless or whatever
         "ansicolors",  # for displaying images on the terminal
         "shapely",  # for polygon manipulations
