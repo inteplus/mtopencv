@@ -128,10 +128,8 @@ class Cropping:
 
         if self.cropres != other.imgres:
             raise ValueError(
-                "The cropres of the current cropping {} is different from the imgres of the other "
-                "cropping {}.".format(
-                    self.cropres, other.imgres
-                )
+                f"The cropres of the current cropping {self.cropres} is different from the imgres "
+                f"of the other cropping {other.imgres}."
             )
 
         tfm = self.get_img2crop_tfm()
@@ -164,10 +162,8 @@ class Cropping:
 
         if self.imgres != other.imgres:
             raise ValueError(
-                "The imgres of the current cropping {} is different from the imgres of the other "
-                "cropping {}.".format(
-                    self.imgres, other.imgres
-                )
+                f"The imgres of the current cropping {self.imgres} is different from the imgres "
+                f"of the other cropping {other.imgres}."
             )
 
         tfm = other.get_img2crop_tfm()

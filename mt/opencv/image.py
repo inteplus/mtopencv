@@ -115,8 +115,9 @@ class Image(object):
         self.meta = meta
 
     def __repr__(self):
-        return "cv.Image(image.shape={}, pixel_format='{}', meta={})".format(
-            self.image.shape, self.pixel_format, json.dumps(self.meta)
+        return (
+            f"cv.Image(image.shape={self.image.shape}, pixel_format='{self.pixel_format}', "
+            f"meta={json.dumps(self.meta)})"
         )
 
     # ---- serialisation -----
