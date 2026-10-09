@@ -3,13 +3,23 @@
 An image resolution (imgres) is defined as a list [width, height], so that it can be smoothly
 serialized using yaml. There are some functions in this module to convert between imgres and common
 image resolutions types like equivalents of OpenCV's size format or a part of a row-major
-numpy.ndarray's shape.
+numpy.ndarray's shape. Note that a row-major image array has shape `(height, width, ...)`, the
+reverse order of an imgres.
 
-A few common resolutions are used here. The reference for resolutions is:
-https://en.wikipedia.org/wiki/List_of_common_resolutions
+A few common resolutions are used here, available by name in dictionary `name2imgres`. The
+reference for resolutions is: https://en.wikipedia.org/wiki/List_of_common_resolutions
 
 For CIF-based resolutions, see https://en.wikipedia.org/wiki/Low-definition_television
 
+Examples
+--------
+>>> from mt.opencv import imgres
+>>> imgres.name2imgres["qvga"]
+[320, 240]
+>>> imgres.shape2imgres((480, 640, 3))
+[640, 480]
+>>> imgres.imgres2shape([640, 480])
+(480, 640)
 """
 
 import fractions
@@ -54,32 +64,109 @@ name2imgres = {
 
 
 def equal(imgres1, imgres2):
-    """Checks if two imgresses are equal or not."""
+    """Checks if two imgresses are equal or not.
+
+    Parameters
+    ----------
+    imgres1, imgres2 : list
+        pairs of `[width, height]`
+
+    Returns
+    -------
+    bool
+        whether the widths and the heights are respectively equal
+
+    Examples
+    --------
+    >>> from mt.opencv import imgres
+    >>> imgres.equal([640, 480], (640, 480))
+    True
+    """
     return (imgres1[0] == imgres2[0]) and (imgres1[1] == imgres2[1])
 
 
 def imgres2size(imgres):
-    """Converts an imgres into an equivalent OpenCV's size."""
+    """Converts an imgres `[width, height]` into an equivalent OpenCV's size `(width, height)`.
+
+    Returns
+    -------
+    tuple
+        the pair `(width, height)`
+    """
     return (imgres[0], imgres[1])
 
 
 def imgres2shape(imgres):
-    """Converts an imgres into an int tuple that can be used to define a row-major numpy.ndarray."""
+    """Converts an imgres into an int tuple that can be used to define a row-major numpy.ndarray.
+
+    Parameters
+    ----------
+    imgres : list
+        pair of `[width, height]`
+
+    Returns
+    -------
+    tuple
+        the pair `(height, width)`
+
+    See Also
+    --------
+    shape2imgres : the inverse operation
+    """
     return (imgres[1], imgres[0])
 
 
 def size2imgres(size):
-    """Converts an equivalent of OpenCV's size into imgres."""
+    """Converts an equivalent of OpenCV's size `(width, height)` into imgres `[width, height]`.
+
+    Returns
+    -------
+    list
+        the pair `[width, height]`
+    """
     return [size[0], size[1]]
 
 
 def shape2imgres(shape):
-    """Converts a part of a row-major numpy.ndarray's shape into imgres."""
+    """Converts a part of a row-major numpy.ndarray's shape into imgres.
+
+    Parameters
+    ----------
+    shape : tuple
+        the shape of an image array, of the form `(height, width)` or `(height, width, ...)`. Only
+        the first two items are used.
+
+    Returns
+    -------
+    list
+        the pair `[width, height]`
+
+    See Also
+    --------
+    imgres2shape : the inverse operation
+    """
     return [shape[1], shape[0]]
 
 
 def aspect_ratio(imgres):
-    """Gets the aspect ratio of the resolution."""
+    """Gets the aspect ratio of the resolution.
+
+    Parameters
+    ----------
+    imgres : list
+        pair of `[width, height]` of integers
+
+    Returns
+    -------
+    fractions.Fraction
+        the exact width-over-height ratio
+
+    Examples
+    --------
+    >>> from mt.opencv import imgres
+    >>> imgres.aspect_ratio([1920, 1080])
+    Fraction(16, 9)
+    """
     return fractions.Fraction(imgres[0], imgres[1])
 
 
@@ -101,13 +188,26 @@ def get_center_window(aspect_ratio, src_imgres, alpha=1.0):
         the input width-over-height aspect ratio
     src_imgres : list
         pair of `[width, height]` of the source image resolution
-    alpha : float
-        a positive scalar telling how large the window can be
+    alpha : float, optional
+        a positive scalar telling how large the window can be. Default is 1.0.
 
     Returns
     -------
-    rect : mt.geo2d.rect.Rect
-        the output center window
+    rect : mt.geo2d.Rect
+        the output center window, in pixel coordinates of the source image
+
+    Raises
+    ------
+    ValueError
+        if `alpha` is not positive
+
+    Examples
+    --------
+    >>> from mt.opencv import imgres
+    >>> imgres.get_center_window(1.0, [640, 480])
+    Rect(x=80.0, y=0.0, w=480.0, h=480.0)
+    >>> imgres.get_center_window(1.0, [640, 480], alpha=0.5)
+    Rect(x=200.0, y=120.0, w=240.0, h=240.0)
     """
 
     if alpha <= 0:
@@ -157,13 +257,23 @@ def get_center_window_tfm(dst_imgres, src_imgres, alpha=1.0):
         pair of `[width, height]` of the destination image resolution
     src_imgres : list
         pair of `[width, height]` of the source image resolution
-    alpha : float
-        a positive scalar telling how large the window can be
+    alpha : float, optional
+        a positive scalar telling how large the window can be. Default is 1.0.
 
     Returns
     -------
-    tfm : mt.geo2d.affine.Aff2d
+    tfm : mt.geo2d.Aff2d
         output 2D transformation
+
+    Raises
+    ------
+    ValueError
+        if `alpha` is not positive
+
+    See Also
+    --------
+    get_center_window : returns the window itself
+    mt.opencv.imgcrop.Cropping : the recommended replacement
     """
 
     src_rect = get_center_window(dst_imgres[0] / dst_imgres[1], src_imgres, alpha=alpha)
@@ -183,7 +293,7 @@ def get_center_window_tfm_tf(dst_shape, src_shape, alpha=1.0):
     """Tensorflow version of :func:`get_center_window_tfm`.
 
     Unlike the original function, the function inputs and outputs tensors. Instead of imgreses,
-    the function inputs shapes.
+    the function inputs shapes, which are in `[height, width]` order.
 
     Parameters
     ----------
@@ -191,8 +301,8 @@ def get_center_window_tfm_tf(dst_shape, src_shape, alpha=1.0):
         pair of `[height, width]` of the destination image resolution
     src_shape : tensorflow.Tensor or list
         pair of `[height, width]` of the source image resolution
-    alpha : tensorflow.Tensor or scalar
-        a positive scalar telling how large the window can be
+    alpha : tensorflow.Tensor or float, optional
+        a positive scalar telling how large the window can be. Default is 1.0.
 
     Returns
     -------
@@ -233,17 +343,34 @@ def get_center_window_tfm_tf(dst_shape, src_shape, alpha=1.0):
 def get_thumbnail_imgres(raw_imgres: list, large: bool = False) -> list:
     """Gets the thumbnail resolution from the raw imgres.
 
+    Only raw resolutions of aspect ratio 4:3 or 16:9 are supported. For 4:3, the thumbnail is 'cif'
+    (or 'pal43' if `large`). For 16:9, it is 'ws_cif' (or 'pal169' if `large`). See `name2imgres`.
+
     Parameters
     ----------
     raw_imgres : list
         pair `[width, height]` representing the raw image resolution
-    large : bool
-        whether or not to make a large thumbnail
+    large : bool, optional
+        whether or not to make a large thumbnail. Default is False.
 
     Returns
     -------
     thumb_imgres : list
-        pair `[width, height]` representing the resolution of the thumbnail
+        pair `[width, height]` representing the resolution of the thumbnail. It is the list stored
+        in `name2imgres` (not a copy).
+
+    Raises
+    ------
+    NotImplementedError
+        if the aspect ratio of `raw_imgres` is neither 4:3 nor 16:9
+
+    Examples
+    --------
+    >>> from mt.opencv import imgres
+    >>> imgres.get_thumbnail_imgres([640, 480])
+    [384, 288]
+    >>> imgres.get_thumbnail_imgres([1280, 720], large=True)
+    [1024, 576]
     """
 
     ar = aspect_ratio(raw_imgres)
@@ -268,27 +395,40 @@ def make_thumbnail(
     """Makes a thumbnail out of an image.
 
     Only images of aspect ratio 4:3 or 16:9 are accepted. The thumbnail of a 4:3 image will be of
-    resolution 'cif' for normal thumbnails and 'pal43' for large thumbnails. The thumbnail of a
-    16:9 image will be of resolution 'ws_cif' for normal thumbnails and 'pal169' for large
-    thumbnails. See attribute `name2imgres` of the module for more details.
+    resolution 'cif' (384x288) and that of a 16:9 image will be of resolution 'ws_cif' (512x288).
+    See
+    attribute `name2imgres` of the module for more details.
 
     Parameters
     ----------
-    image : np.ndarray
+    image : numpy.ndarray
         an image of shape `(H, W, D)` where `1 <= D <= 4`
-    large : bool
-        whether or not to make a large thumbnail
-    pixel_format : str
-        pixel format. To be passed as-is to :class:`mt.opencv.image.Image`
+    large : bool, optional
+        intended to select a large thumbnail ('pal43' or 'pal169'), but currently it is ignored and
+        the normal thumbnail is always made. Default is False.
+    pixel_format : str, optional
+        pixel format. To be passed as-is to :class:`mt.opencv.image.Image`. Default is 'rgb'.
     extra_meta : dict, optional
         extra metadata for the image. To be passed as-is to :class:`mt.opencv.image.Image`
 
     Returns
     -------
     mt.opencv.image.Image
-        another image of shape `(288//A, 288, D)` with metadata, where A is the aspect ratio. The
-        metadata of theimage contains key 'src_imgres' telling the resolution of the original
-        image, plus any metadata provided by the `extra_meta` dictionary.
+        another image of shape `(288, 384, D)` or `(288, 512, D)` with metadata. The metadata of the
+        image contains key 'src_imgres' telling the resolution of the original image, plus any
+        metadata provided by the `extra_meta` dictionary.
+
+    Raises
+    ------
+    NotImplementedError
+        if the aspect ratio of the image is neither 4:3 nor 16:9
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from mt.opencv.imgres import make_thumbnail
+    >>> make_thumbnail(np.zeros((480, 640, 3), dtype=np.uint8))
+    cv.Image(image.shape=(288, 384, 3), pixel_format='rgb', meta={"src_imgres": [640, 480]})
     """
 
     imgres = shape2imgres(image.shape)

@@ -4,6 +4,18 @@ Croppings and crops are understood as the followings. Cropping is the act of cut
 an image to form a smaller image, and maybe with a different resolution. Hence, a cropping is
 analogous to an image transformation. A crop is the result of cropping an image. Hence, a crop is
 like an image transform.
+
+Resolutions (`imgres` and `cropres`) are lists `[width, height]`, while numpy images have shape
+`(height, width, nchannels)`.
+
+Examples
+--------
+>>> import numpy as np
+>>> import mt.geo2d as g2
+>>> from mt.opencv.imgcrop import Cropping
+>>> cropping = Cropping([640, 480], g2.Rect(100, 100, 300, 200), [100, 50])
+>>> cropping.apply(np.zeros((480, 640, 3), dtype=np.uint8)).shape
+(50, 100, 3)
 """
 
 from mt import tp, np, geo2d
@@ -31,11 +43,34 @@ class Cropping:
     window : mt.geo2d.Rect, optional
         the rectangle on the source image defining where to cut/crop. If not given, it is set to be
         the rectangle capturing the whole image.
-    cropres : list
+    cropres : list, optional
         pair of `[width, height]` defining the resolution of the crop after being extracted from
-        the source image
-    crop : mt.geo2dRect, optional
-        A different name for argument 'window'. For backward compatibility only.
+        the source image. Default is `[1, 1]`.
+    crop : mt.geo2d.Rect, optional
+        A different name for argument 'window'. For backward compatibility only. It is used only if
+        `window` is not given.
+
+    Attributes
+    ----------
+    imgres : list
+        resolution of the source image
+    window : mt.geo2d.Rect
+        crop window on the source image
+    cropres : list
+        resolution of the crop
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> import mt.geo2d as g2
+    >>> from mt.opencv.imgcrop import Cropping
+    >>> cropping = Cropping([640, 480], g2.Rect(100, 100, 300, 200), [100, 50])
+    >>> cropping
+    Cropping(imgres=[640, 480], window=Rect(x=100.0, y=100.0, w=200.0, h=100.0), cropres=[100, 50])
+    >>> cropping.get_img2crop_tfm()
+    Aff2d(offset=vec2( -50, -50 ), linear=mat2x2(( 0.5, 0 ), ( 0, 0.5 )))
+    >>> cropping.apply(np.zeros((480, 640, 3), dtype=np.uint8)).shape
+    (50, 100, 3)
     """
 
     def __init__(
@@ -54,9 +89,29 @@ class Cropping:
         self.cropres = cropres
 
     def __repr__(self):
+        """Returns a string showing the imgres, window and cropres."""
         return f"Cropping(imgres={self.imgres}, window={self.window}, cropres={self.cropres})"
 
     def to_json(self):
+        """Dumps the cropping to a JSON-like object.
+
+        Returns
+        -------
+        dict
+            a dictionary with keys 'imgres', 'window' (a list `[min_x, min_y, max_x, max_y]`) and
+            'cropres'
+
+        See Also
+        --------
+        from_json : the inverse operation
+
+        Examples
+        --------
+        >>> import mt.geo2d as g2
+        >>> from mt.opencv.imgcrop import Cropping
+        >>> Cropping([640, 480], g2.Rect(100, 100, 300, 200), [100, 50]).to_json()
+        {'imgres': [640, 480], 'window': [100.0, 100.0, 300.0, 200.0], 'cropres': [100, 50]}
+        """
         return {
             "imgres": self.imgres,
             "window": self.window.to_json(),
@@ -65,6 +120,31 @@ class Cropping:
 
     @classmethod
     def from_json(cls, json_obj):
+        """Loads a cropping from a JSON-like object produced by :func:`Cropping.to_json`.
+
+        Parameters
+        ----------
+        json_obj : dict
+            the serialised cropping. The window is read from key 'crop' if present (backward
+            compatibility), otherwise from key 'window'.
+
+        Returns
+        -------
+        Cropping
+            the loaded cropping
+
+        See Also
+        --------
+        to_json : the inverse operation
+
+        Examples
+        --------
+        >>> import mt.geo2d as g2
+        >>> from mt.opencv.imgcrop import Cropping
+        >>> c = Cropping([640, 480], g2.Rect(100, 100, 300, 200), [100, 50])
+        >>> Cropping.from_json(c.to_json()).window
+        Rect(x=100.0, y=100.0, w=200.0, h=100.0)
+        """
         window = geo2d.Rect.from_json(
             json_obj["crop" if "crop" in json_obj else "window"]
         )
@@ -77,9 +157,12 @@ class Cropping:
     def get_img2crop_tfm(self) -> geo2d.Aff2d:
         """Returns the 2D affine transformation mapping source pixels to crop pixels.
 
+        The transformation maps the crop window of the source image to the rectangle
+        `[0, cropres[0]] x [0, cropres[1]]`.
+
         Returns
         -------
-        tfm : mt.geo2d.affine.Aff2d
+        tfm : mt.geo2d.Aff2d
             output 2D transformation
         """
 
@@ -88,6 +171,9 @@ class Cropping:
 
     def get_img2crop_tfm_tf(self):
         """Returns the 2D affine transformation TF tensor mapping source pixels to crop pixels.
+
+        It is the same transformation as :func:`get_img2crop_tfm` but as a tensor. TensorFlow is
+        imported lazily.
 
         Returns
         -------
@@ -114,6 +200,9 @@ class Cropping:
     def join(self, other):
         """Joins with another image cropping to form a composite image cropping.
 
+        Suppose the current cropping maps image A to crop B and `other` maps image B to crop C. The
+        function returns the cropping that maps image A directly to crop C.
+
         Parameters
         ----------
         other : Cropping
@@ -124,6 +213,24 @@ class Cropping:
         Cropping
             the output composite image cropping, whose imgres is the same as that of self, and
             cropres is the same as that of other.
+
+        Raises
+        ------
+        ValueError
+            if the cropres of the current cropping is different from the imgres of `other`
+
+        See Also
+        --------
+        rebase : changes the source image instead
+
+        Examples
+        --------
+        >>> import mt.geo2d as g2
+        >>> from mt.opencv.imgcrop import Cropping
+        >>> c1 = Cropping([640, 480], g2.Rect(100, 100, 300, 200), [100, 50])
+        >>> c2 = Cropping([100, 50], g2.Rect(0, 0, 50, 25), [10, 5])
+        >>> c1.join(c2)
+        Cropping(imgres=[640, 480], window=Rect(x=100.0, y=100.0, w=100.0, h=50.0), cropres=[10, 5])
         """
 
         if self.cropres != other.imgres:
@@ -158,6 +265,24 @@ class Cropping:
         Cropping
             the output rebased cropping, whose imgres is the same as the cropres of the `other`
             cropping, and cropres is the same as that of the current cropping.
+
+        Raises
+        ------
+        ValueError
+            if the imgres of the current cropping is different from the imgres of `other`
+
+        See Also
+        --------
+        join : composes two croppings in sequence
+
+        Examples
+        --------
+        >>> import mt.geo2d as g2
+        >>> from mt.opencv.imgcrop import Cropping
+        >>> c = Cropping([640, 480], g2.Rect(100, 100, 300, 200), [100, 50])
+        >>> other = Cropping([640, 480], g2.Rect(0, 0, 320, 240), [320, 240])
+        >>> c.rebase(other).imgres
+        [320, 240]
         """
 
         if self.imgres != other.imgres:
@@ -188,23 +313,51 @@ class Cropping:
         Parameters
         ----------
         in_image : numpy.ndarray
-            input image from which the cropping takes place. It must have the same resolution as
-            the imgres of the cropping.
+            input image from which the cropping takes place, of shape `(height, width, nchannels)`
+            with
+            at most 4 channels. It should have the same resolution as the imgres of the cropping
+            (this is not checked). A 2D image of shape `(height, width)` is not supported.
         out_image : numpy.ndarray, optional
             output image to be cropped and resized to. If provided, it must have the same
             resolution as the cropres of the cropping. Otherwise, one is generated with the same
             dtype and number of channels as the input image, and with the same cropres of the
             cropping.
-        inter_mode : {'nearest', 'bilinear'}
+        inter_mode : {'nearest', 'bilinear'}, optional
             interpolation mode. 'nearest' means nearest neighbour interpolation. 'bilinear' means
-            bilinear interpolation
-        border_mode : {'constant', 'replicate'}
+            bilinear interpolation. Default is 'bilinear'.
+        border_mode : {'constant', 'replicate'}, optional
             border filling mode. 'constant' means filling zero constant. 'replicate' means
-            replicating last pixels in each dimension.
+            replicating last pixels in each dimension. Default is 'replicate'.
+
+        Returns
+        -------
+        numpy.ndarray
+            the crop, which is `out_image` if provided, with shape `(cropres[1], cropres[0],
+            nchannels)`
+
+        Raises
+        ------
+        NotImplementedError
+            if the input image has more than 4 channels
+        ValueError
+            if the resolution of `out_image` is different from the cropres of the cropping
 
         Notes
         -----
         Since we use OpenCV for warping, the maximum number of channels is 4.
+
+        The cropping object is also callable, with `cropping(in_image)` being the same as
+        `cropping.apply(in_image)`.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> import mt.geo2d as g2
+        >>> from mt.opencv.imgcrop import Cropping
+        >>> img = np.arange(16, dtype=np.uint8).reshape(4, 4, 1)
+        >>> Cropping([4, 4], g2.Rect(0, 0, 4, 4), [2, 2]).apply(img, inter_mode="nearest")[:, :, 0]
+        array([[ 0,  2],
+               [ 8, 10]], dtype=uint8)
         """
 
         if in_image.shape[2] > 4:
@@ -258,23 +411,43 @@ def weight2crop(
     ----------
     weight_image : numpy.ndarray
         a 2D weight image with shape (height, width) and every pixel has a non-negative weight
-    alpha : float
-        threshold to determine the level set beta such that the number of pixels whose value is
-        greather than or equal to beta is greater than or equal to alpha*total weight.
-    thresh : float
-        threshold, below which the weight is set to zero
-    square : bool
-        whether or not to return a square or a rectangle
-    padding : float
-        percentage of padding compared on each dimension to make the returning rect larger than
-        necessary (to make it convincing for food recognition for example)
+    alpha : float, optional
+        threshold in `[0, 1)` to determine the level set beta such that the number of pixels whose
+        value is greater than or equal to beta is greater than or equal to alpha*total weight.
+        Default is 0.98.
+    thresh : float, optional
+        non-negative threshold, below which the weight is set to zero. Default is 0.
+    square : bool, optional
+        whether or not to return a square or a rectangle. Default is True.
+    padding : float, optional
+        non-negative percentage of padding compared on each dimension to make the returning rect
+        larger than necessary (to make it convincing for food recognition for example).
+        Default is 0.
 
     Returns
     -------
-    mt.geo2d.rect.Rect
+    mt.geo2d.Rect
         a Rect such that all pixels whose values above beta (see above) are included, and that the
         total area including padding is as small as possible. If square is True, the returning
-        rectangle is a square.
+        rectangle is a square. If the total weight is (almost) zero, a null rectangle `Rect(0, 0, 0,
+        0)` is returned. The rectangle is in pixel coordinates `(x, y)` and may extend beyond the
+        image when `square` or `padding` is used.
+
+    Raises
+    ------
+    ValueError
+        if `alpha` is not in `[0, 1)`, or `padding` or `thresh` is negative
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from mt.opencv.imgcrop import weight2crop
+    >>> w = np.zeros((10, 10), dtype=np.float32)
+    >>> w[2:5, 3:8] = 1.0
+    >>> weight2crop(w, square=False)
+    Rect(x=3.0, y=2.0, w=5.0, h=3.0)
+    >>> weight2crop(w)
+    Rect(x=3.0, y=1.0, w=5.0, h=5.0)
     """
 
     if alpha < 0 or alpha >= 1:
@@ -432,21 +605,34 @@ def ultralytics_letterbox(
 
     The image is scaled to fit in the new resolution while keeping the aspect ratio, and then
     padded on every side such that the image is always at the center and the padding is minimal.
+    The padding is filled with the gray value 114 in every channel.
 
     Parameters
     ----------
     image : numpy.ndarray
-        input image to be letterbox resized
-    new_imgres : list
-        pair of `[width, height]` defining the desired output image resolution
+        input image of shape `(height, width, nchannels)` to be letterbox resized
+    new_imgres : list, optional
+        pair of `[width, height]` defining the desired output image resolution. Default is
+        `[640, 640]`.
 
     Returns
     -------
     numpy.ndarray
-        the output letterbox resized image
+        the output letterbox resized image, of shape `(new_imgres[1], new_imgres[0], nchannels)`
     Cropping
         the cropping mapping from the letterboxed image used as input to YOLO models to the
         original image.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from mt.opencv.imgcrop import ultralytics_letterbox
+    >>> img = np.zeros((100, 200, 3), dtype=np.uint8)
+    >>> out, cropping = ultralytics_letterbox(img, [64, 64])
+    >>> out.shape, out[0, 0].tolist()
+    ((64, 64, 3), [114, 114, 114])
+    >>> cropping
+    Cropping(imgres=[64, 64], window=Rect(x=0.0, y=16.0, w=64.0, h=32.0), cropres=[200, 100])
     """
 
     src_h, src_w = image.shape[0], image.shape[1]

@@ -1,4 +1,21 @@
-"""An self-contained image."""
+"""A self-contained image: an array of pixels bundled with its pixel format and metadata.
+
+The main class is :class:`Image`, which can be serialised to JSON or HDF5, and saved to or loaded
+from a file with :func:`immsave` and :func:`immload`. Functions :func:`imload` and :func:`imsave`
+are asynchronous wrappers around :func:`cv2.imread` and :func:`cv2.imwrite`, and
+:func:`im_float2ubyte` and :func:`im_ubyte2float` convert between float and uint8 pixel values.
+
+Images are numpy arrays of shape `(height, width, nchannels)`, or `(height, width)` for the
+'gray' pixel format, with dtype uint8. The channel order is given by the pixel format.
+
+Examples
+--------
+>>> import numpy as np
+>>> from mt.opencv.image import Image
+>>> img = Image(np.zeros((2, 3, 3), dtype=np.uint8), pixel_format="rgb", meta={"id": 1})
+>>> img
+cv.Image(image.shape=(2, 3, 3), pixel_format='rgb', meta={"id": 1})
+"""
 
 import cv2
 import base64
@@ -101,12 +118,37 @@ class Image(object):
 
     Parameters
     ----------
-    image : numpy.array
-        a 2D image of shape (height, width, nchannels) or (height, width) with dtype uint8
+    image : numpy.ndarray
+        a 2D image of shape `(height, width, nchannels)` or `(height, width)` with dtype uint8. It
+        is
+        converted into a C-contiguous array. Its channel order must follow `pixel_format`.
+    pixel_format : str, optional
+        one of the keys in the `PixelFormat` mapping, namely 'rgb', 'bgr', 'rgba', 'bgra', 'argb',
+        'abgr' and 'gray'. The mapping gives the number of channels of each format. Default is
+        'rgb'.
+    meta : dict, optional
+        A JSON-serialisable dictionary holding additional keyword parameters associated with the
+        image. It is stored as-is, not copied. Default is an empty dictionary.
+
+    Attributes
+    ----------
+    image : numpy.ndarray
+        the pixel array
     pixel_format : str
-        one of the keys in the PixelFormat mapping
+        the pixel format
     meta : dict
-        A JSON-like object. It holds additional keyword parameters associated with the image.
+        the metadata
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from mt.opencv.image import Image
+    >>> img = Image(np.zeros((2, 3, 3), dtype=np.uint8), meta={"id": 1})
+    >>> img
+    cv.Image(image.shape=(2, 3, 3), pixel_format='rgb', meta={"id": 1})
+    >>> img2 = Image.from_json(img.to_json(image_codec="jpg"))
+    >>> img2.image.shape, img2.pixel_format, img2.meta
+    ((2, 3, 3), 'rgb', {'id': 1})
     """
 
     def __init__(self, image, pixel_format="rgb", meta={}):
@@ -115,6 +157,7 @@ class Image(object):
         self.meta = meta
 
     def __repr__(self):
+        """Returns a short description of the image, its pixel format and its metadata."""
         return (
             f"cv.Image(image.shape={self.image.shape}, pixel_format='{self.pixel_format}', "
             f"meta={json.dumps(self.meta)})"
@@ -125,10 +168,14 @@ class Image(object):
     def to_json(self, image_codec: str = "jpg", quality: tp.Optional[int] = None):
         """Dumps the image to a JSON-like object.
 
+        The pixels are encoded with the given codec and then base64-encoded. If the pixel format has
+        an
+        alpha channel, it is encoded separately in key 'alpha'.
+
         Parameters
         ----------
-        image_codec : {'jpg', 'png'}
-            image codec. Currently only 'jpg' and 'png' are supported.
+        image_codec : {'jpg', 'png'}, optional
+            image codec. Only 'jpg' is currently implemented for this method. Default is 'jpg'.
         quality : int, optional
             percentage of image quality. For 'jpg', it is a value between 0 and 100. For 'png', it
             is a value between 0 and 9. If not provided, the backend default will be used.
@@ -136,7 +183,31 @@ class Image(object):
         Returns
         -------
         json_obj : dict
-            the serialised json object
+            the serialised json object, with keys 'pixel_format', 'height', 'width', 'image_codec',
+            'image_codec_quality' (only if `quality` is provided), 'meta', 'image' and, if the pixel
+            format has an alpha channel, 'alpha'
+
+        Raises
+        ------
+        NotImplementedError
+            if `image_codec` is 'png'
+        ValueError
+            if `image_codec` is neither 'jpg' nor 'png'
+
+        See Also
+        --------
+        from_json : the inverse operation
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> from mt.opencv.image import Image
+        >>> img = Image(np.zeros((2, 3, 3), dtype=np.uint8), meta={"id": 1})
+        >>> obj = img.to_json()
+        >>> sorted(obj)
+        ['height', 'image', 'image_codec', 'meta', 'pixel_format', 'width']
+        >>> obj["height"], obj["width"], obj["pixel_format"], obj["image_codec"]
+        (2, 3, 'rgb', 'jpg')
         """
 
         # meta
@@ -176,12 +247,16 @@ class Image(object):
     ):
         """Dumps the image to a h5py.Group object.
 
+        The pixel format, resolution, codec and metadata are saved as attributes of the group. The
+        encoded pixels are saved in dataset 'image', and for 'jpg' images with an alpha channel, the
+        encoded alpha channel is saved in dataset 'alpha'.
+
         Parameters
         ----------
         h5_group : h5py.Group
             a :class:`h5py.Group` object to write to
-        image_codec : {'jpg', 'png'}
-            image codec. Currently only 'jpg' and 'png' are supported.
+        image_codec : {'jpg', 'png'}, optional
+            image codec. Currently only 'jpg' and 'png' are supported. Default is 'jpg'.
         quality : int, optional
             percentage of image quality. For 'jpg', it is a value between 0 and 100. For 'png', it
             is a value between 0 and 9. If not provided, the backend default will be used.
@@ -191,7 +266,13 @@ class Image(object):
         ImportError
             if h5py is not importable
         ValueError
-            if the provided group is not of type :class:`h5py.Group`
+            if the provided group is not of type :class:`h5py.Group`, or if the codec is unknown
+        RuntimeError
+            if OpenCV fails to encode the image
+
+        See Also
+        --------
+        from_hdf5 : the inverse operation
         """
 
         if not base.is_h5group(h5_group):
@@ -242,17 +323,37 @@ class Image(object):
 
     @staticmethod
     def from_json(json_obj):
-        """Loads the image from a JSON-like object produced by :func:`dumps`.
+        """Loads the image from a JSON-like object produced by :func:`Image.to_json`.
 
         Parameters
         ----------
         json_obj : dict
-            the serialised json object
+            the serialised json object. Keys 'pixel_format', 'meta' and 'image' are required, and so
+            is
+            'alpha' if the pixel format has an alpha channel.
 
         Returns
         -------
         Image
-            the loaded image with metadata
+            the loaded image with metadata. The alpha channel, if any, is restored from key 'alpha'.
+
+        Raises
+        ------
+        RuntimeError
+            if the image bytes cannot be decoded
+
+        See Also
+        --------
+        to_json : the inverse operation
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> from mt.opencv.image import Image
+        >>> img = Image(np.full((2, 2), 7, dtype=np.uint8), pixel_format="gray")
+        >>> Image.from_json(img.to_json()).image
+        array([[7, 7],
+               [7, 7]], dtype=uint8)
         """
 
         # meta
@@ -279,7 +380,7 @@ class Image(object):
 
     @staticmethod
     def from_hdf5(h5_group):
-        """Loads the image from an HDF5 group.
+        """Loads the image from an HDF5 group written by :func:`Image.to_hdf5`.
 
         Parameters
         ----------
@@ -290,6 +391,17 @@ class Image(object):
         -------
         Image
             the loaded image with metadata
+
+        Raises
+        ------
+        ValueError
+            if the provided group is not of type :class:`h5py.Group`
+        RuntimeError
+            if the image bytes cannot be decoded
+
+        See Also
+        --------
+        to_hdf5 : the inverse operation
         """
 
         if not base.is_h5group(h5_group):
@@ -330,13 +442,17 @@ class Image(object):
 async def immload_asyn(fp, context_vars: dict = {}):
     """An asyn function that loads an image with metadata.
 
+    The file is first tried as HDF5 (if h5py is installed) and then as JSON.
+
     Parameters
     ----------
-    fp : object
-        string representing a local filepath or an open readable file-like object
-    context_vars : dict
-        a dictionary of context variables within which the function runs. It must include
-        `context_vars['async']` to tell whether to invoke the function asynchronously or not.
+    fp : str or file-like object
+        string representing a local filepath or an open readable file-like object. Only a filepath
+        is supported for HDF5 files.
+    context_vars : dict, optional
+        context variables within which the function runs. It must include `context_vars['async']`
+        (bool), telling whether to invoke the function asynchronously or not. Otherwise a
+        :class:`KeyError` is raised when the file is accessed.
 
     Returns
     -------
@@ -346,11 +462,16 @@ async def immload_asyn(fp, context_vars: dict = {}):
     Raises
     ------
     OSError
-        if an error occured while loading
+        if an error occured while loading, for example the file is neither valid HDF5 nor valid JSON
 
     Notes
     -----
     As of 2022/06/18, the file can be in HDF5 format or JSON format.
+
+    See Also
+    --------
+    immload : the synchronous version
+    immsave_asyn : the inverse operation
     """
 
     # try with h5py
@@ -385,7 +506,7 @@ def immload(fp):
 
     Parameters
     ----------
-    fp : object
+    fp : str or file-like object
         string representing a local filepath or an open readable file handle
 
     Returns
@@ -397,6 +518,22 @@ def immload(fp):
     ------
     OSError
         if an error occured while loading
+
+    See Also
+    --------
+    immload_asyn : the asynchronous version
+    immsave : the inverse operation
+
+    Examples
+    --------
+    >>> import os, tempfile
+    >>> import numpy as np
+    >>> from mt.opencv.image import Image, immsave, immload
+    >>> path = os.path.join(tempfile.mkdtemp(), "x.json")
+    >>> img = Image(np.zeros((2, 3, 3), dtype=np.uint8), meta={"id": 1})
+    >>> _ = immsave(img, path, image_codec="jpg", file_format="json")
+    >>> immload(path)
+    cv.Image(image.shape=(2, 3, 3), pixel_format='rgb', meta={"id": 1})
     """
     return aio.srun(immload_asyn, fp)
 
@@ -404,18 +541,22 @@ def immload(fp):
 async def immload_header_asyn(fp, context_vars: dict = {}):
     """An asyn function that loads the header of an image with metadata.
 
+    Only the pixel format, resolution and metadata are read. The pixels are not decoded.
+
     Parameters
     ----------
-    fp : object
-        string representing a local filepath or an open readable file-like object
-    context_vars : dict
-        a dictionary of context variables within which the function runs. It must include
-        `context_vars['async']` to tell whether to invoke the function asynchronously or not.
+    fp : str or file-like object
+        string representing a local filepath or an open readable file-like object. Only a filepath
+        is supported for HDF5 files.
+    context_vars : dict, optional
+        context variables within which the function runs. It must include `context_vars['async']`
+        (bool), telling whether to invoke the function asynchronously or not. Otherwise a
+        :class:`KeyError` is raised when the file is accessed.
 
     Returns
     -------
     dict
-        a dictionary containing keys `['pixel_format', 'width', 'height', meta']`
+        a dictionary containing keys `['pixel_format', 'width', 'height', 'meta']`
 
     Raises
     ------
@@ -425,6 +566,10 @@ async def immload_header_asyn(fp, context_vars: dict = {}):
     Notes
     -----
     As of 2022/06/18, the file can be in HDF5 format or JSON format.
+
+    See Also
+    --------
+    immload_header : the synchronous version
     """
 
     # try with h5py
@@ -471,18 +616,17 @@ async def immload_header_asyn(fp, context_vars: dict = {}):
 def immload_header(fp):
     """Loads the header of an image with metadata.
 
+    Only the pixel format, resolution and metadata are read. The pixels are not decoded.
+
     Parameters
     ----------
-    fp : object
+    fp : str or file-like object
         string representing a local filepath or an open readable file-like object
-    context_vars : dict
-        a dictionary of context variables within which the function runs. It must include
-        `context_vars['async']` to tell whether to invoke the function asynchronously or not.
 
     Returns
     -------
     dict
-        a dictionary containing keys `['pixel_format', 'width', 'height', meta']`
+        a dictionary containing keys `['pixel_format', 'width', 'height', 'meta']`
 
     Raises
     ------
@@ -491,7 +635,23 @@ def immload_header(fp):
 
     Notes
     -----
-    As of 2022/06/18, the file can be in HDF5 format or JSON format.
+    As of 2022/06/18, the file can be in HDF5 format or JSON format. Unlike
+    :func:`immload_header_asyn`, this function has no `context_vars` argument.
+
+    See Also
+    --------
+    immload_header_asyn : the asynchronous version
+
+    Examples
+    --------
+    >>> import os, tempfile
+    >>> import numpy as np
+    >>> from mt.opencv.image import Image, immsave, immload_header
+    >>> path = os.path.join(tempfile.mkdtemp(), "x.json")
+    >>> img = Image(np.zeros((2, 3, 3), dtype=np.uint8), meta={"id": 1})
+    >>> _ = immsave(img, path, image_codec="jpg", file_format="json")
+    >>> immload_header(path)
+    {'pixel_format': 'rgb', 'width': 3, 'height': 2, 'meta': {'id': 1}}
     """
     return aio.srun(immload_header_asyn, fp)
 
@@ -512,29 +672,32 @@ async def immsave_asyn(
 
     Parameters
     ----------
-    imm : Image
+    image : Image
         an image with metadata
-    fp : str
+    fp : str or file-like object
         local filepath to save the content to. If the file format is 'json', fp can also be a
         file-like object.
-    file_mode : int
+    file_mode : int, optional
         file mode to be set to using :func:`os.chmod`. If None is given, no setting of file mode
-        will happen.
-    image_codec : {'jpg', 'png'}
-        image codec. Currently only 'jpg' and 'png' are supported.
+        will happen. Default is 0o664.
+    image_codec : {'jpg', 'png'}, optional
+        image codec. Default is 'png'. Note that file format 'json' only supports 'jpg' at the
+        moment, so for that format the codec must be given explicitly.
     quality : int, optional
         percentage of image quality. For 'jpg', it is a value between 0 and 100. For 'png', it is
         a value between 0 and 9. If not provided, the backend default will be used.
-    context_vars : dict
-        a dictionary of context variables within which the function runs. It must include
-        `context_vars['async']` to tell whether to invoke the function asynchronously or not.
-    file_format : {'json', 'hdf5'}
-        format to be used for saving the content.
-    file_write_delayed : bool
+    context_vars : dict, optional
+        context variables within which the function runs. It must include `context_vars['async']`
+        (bool), telling whether to invoke the function asynchronously or not. Otherwise a
+        :class:`KeyError` is raised when the file is accessed.
+    file_format : {'json', 'hdf5'}, optional
+        format to be used for saving the content. Default is 'hdf5', which requires h5py.
+    file_write_delayed : bool, optional
         Only valid in asynchronous mode and the format is 'json'. If True, wraps the file write
         task into a future and returns the future. In all other cases, proceeds as usual.
-    make_dirs : bool
-        Whether or not to make the folders containing the path before writing to the file.
+    make_dirs : bool, optional
+        Whether or not to make the folders containing the path before writing to the file. Only used
+        for the 'json' format with a filepath.
     logger : logging.Logger, optional
         logger for debugging purposes
 
@@ -547,8 +710,19 @@ async def immsave_asyn(
 
     Raises
     ------
+    ImportError
+        if the format is 'hdf5' but h5py cannot be imported
+    ValueError
+        if the file format is unknown, or the format is 'hdf5' and `fp` is not a string
+    NotImplementedError
+        if the format is 'json' and the codec is 'png'
     OSError
-        if an error occured while loading
+        if an error occured while saving
+
+    See Also
+    --------
+    immsave : the synchronous version
+    immload_asyn : the inverse operation
     """
 
     if file_format == "hdf5":
@@ -606,29 +780,46 @@ def immsave(
 
     Parameters
     ----------
-    imm : Image
+    image : Image
         an image with metadata
-    fp : object
-        string representing a local filepath or an open writable file handle
-    file_mode : int
+    fp : str or file-like object
+        string representing a local filepath or an open writable file handle. A file handle is only
+        supported for the 'json' format.
+    file_mode : int, optional
         file mode to be set to using :func:`os.chmod`. Only valid if fp is a string. If None is
-        given, no setting of file mode will happen.
-    image_codec : {'jpg', 'png'}
-        image codec. Currently only 'jpg' and 'png' are supported.
+        given, no setting of file mode will happen. Default is 0o664.
+    image_codec : {'jpg', 'png'}, optional
+        image codec. Default is 'png'. Note that file format 'json' only supports 'jpg' at the
+        moment, so for that format the codec must be given explicitly.
     quality : int, optional
         percentage of image quality. For 'jpg', it is a value between 0 and 100. For 'png', it is
         a value between 0 and 9. If not provided, the backend default will be used.
-    file_format : {'json', 'hdf5'}
-        format to be used for saving the content.
-    make_dirs : bool
+    file_format : {'json', 'hdf5'}, optional
+        format to be used for saving the content. Default is 'hdf5', which requires h5py.
+    make_dirs : bool, optional
         Whether or not to make the folders containing the path before writing to the file.
     logger : logging.Logger, optional
         logger for debugging purposes
 
     Raises
     ------
+    ImportError
+        if the format is 'hdf5' but h5py cannot be imported
+    ValueError
+        if the file format is unknown
+    NotImplementedError
+        if the format is 'json' and the codec is 'png'
     OSError
-        if an error occured while loading
+        if an error occured while saving
+
+    See Also
+    --------
+    immsave_asyn : the asynchronous version
+    immload : the inverse operation
+
+    Examples
+    --------
+    See :func:`immload`.
     """
     return aio.srun(
         immsave_asyn,
@@ -648,27 +839,49 @@ async def imload(
     flags=cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH,
     context_vars: dict = {},
 ):
-    """An asyn function wrapping on :func:`cv.imread`.
+    """An asyn function wrapping on :func:`cv2.imread`.
+
+    The file is read as bytes and then decoded by :func:`cv2.imdecode`, so the path can be on any
+    filesystem supported by :mod:`mt.aio`. Channels of a colour image are in BGR order, as OpenCV
+    does.
 
     Parameters
     ----------
     filepath : str
         Local path to the file to be loaded
-    flags : int
-        'cv.IMREAD_xxx' flags, if any. See :func:`cv:imread`.
-    context_vars : dict
-        a dictionary of context variables within which the function runs. It must include
-        `context_vars['async']` to tell whether to invoke the function asynchronously or not.
+    flags : int, optional
+        'cv.IMREAD_xxx' flags, if any. See :func:`cv2.imread`. Default is
+        `cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH`.
+    context_vars : dict, optional
+        context variables within which the function runs. It must include `context_vars['async']`
+        (bool), telling whether to invoke the function asynchronously or not. Otherwise a
+        :class:`KeyError` is raised when the file is accessed.
 
     Returns
     -------
     img : numpy.ndarray
-        the loaded image
+        the loaded image, of shape `(height, width)` or `(height, width, nchannels)`. It is None if
+        the content cannot be decoded.
 
     See Also
     --------
-    cv.imread
+    cv2.imread
         wrapped function
+    imsave : the inverse operation
+
+    Examples
+    --------
+    >>> import os, tempfile
+    >>> import numpy as np
+    >>> from mt import aio
+    >>> from mt.opencv.image import imload, imsave
+    >>> path = os.path.join(tempfile.mkdtemp(), "x.png")
+    >>> img = np.arange(12, dtype=np.uint8).reshape(3, 4)
+    >>> _ = aio.srun(imsave, path, img)
+    >>> aio.srun(imload, path)
+    array([[ 0,  1,  2,  3],
+           [ 4,  5,  6,  7],
+           [ 8,  9, 10, 11]], dtype=uint8)
     """
 
     contents = await aio.read_binary(filepath, context_vars=context_vars)
@@ -685,27 +898,31 @@ async def imsave(
     file_write_delayed: bool = False,
     make_dirs: bool = False,
 ):
-    """An asyn function wrapping on :func:`cv.imwrite`.
+    """An asyn function wrapping on :func:`cv2.imwrite`.
+
+    The image is encoded by :func:`cv2.imencode` according to the extension of `filepath`, and the
+    bytes are then written to the file.
 
     Parameters
     ----------
     filepath : str
-        Local path to the file to be saved to
+        Local path to the file to be saved to. Its extension determines the image format.
     img : numpy.ndarray
-        the image to be saved
-    params : int
-        Format-specific parameters, if any. Like those 'cv.IMWRITE_xxx' flags. See
-        :func:`cv.imwrite`.
-    file_mode : int
+        the image to be saved. A colour image is assumed by OpenCV to be in BGR(A) order.
+    params : list, optional
+        Format-specific parameters, if any, as a flat list of `[flag, value, ...]`, like those
+        'cv.IMWRITE_xxx' flags. See :func:`cv2.imencode`.
+    file_mode : int, optional
         file mode to be set to using :func:`os.chmod`. Only valid if fp is a string. If None is
-        given, no setting of file mode will happen.
-    context_vars : dict
-        a dictionary of context variables within which the function runs. It must include
-        `context_vars['async']` to tell whether to invoke the function asynchronously or not.
-    file_write_delayed : bool
+        given, no setting of file mode will happen. Default is 0o664.
+    context_vars : dict, optional
+        context variables within which the function runs. It must include `context_vars['async']`
+        (bool), telling whether to invoke the function asynchronously or not. Otherwise a
+        :class:`KeyError` is raised when the file is accessed.
+    file_write_delayed : bool, optional
         Only valid in asynchronous mode. If True, wraps the file write task into a future and
         returns the future. In all other cases, proceeds as usual.
-    make_dirs : bool
+    make_dirs : bool, optional
         Whether or not to make the folders containing the path before writing to the file.
 
     Returns
@@ -714,6 +931,11 @@ async def imsave(
         either a future or the number of bytes written, depending on whether the file write
         task is delayed or not
 
+    Raises
+    ------
+    ValueError
+        if the image cannot be encoded
+
     Note
     ----
     Do not use this function to write in PNG format. OpenCV would happily assume the input is BGR
@@ -721,8 +943,13 @@ async def imsave(
 
     See Also
     --------
-    cv.imwrite
-        wrapped asynchronous function
+    cv2.imwrite
+        wrapped function
+    imload : the inverse operation
+
+    Examples
+    --------
+    See :func:`imload`.
     """
 
     ext = path.splitext(filepath)[1]
@@ -745,18 +972,34 @@ async def imsave(
 def im_float2ubyte(img: np.ndarray, is_float01: bool = True):
     """Converts an image with a float dtype into an image with an ubyte dtype.
 
+    Values are scaled and rounded to the nearest integer. Values outside of the expected range
+    are not clipped and will wrap around.
+
     Parameters
     ----------
-    img : nd.ndarray
+    img : numpy.ndarray
         the image to be converted
-    is_float01 : bool
+    is_float01 : bool, optional
         whether the pixel values of the float image are in range [0,1] (True) or range [-1,1]
-        (False)
+        (False). Default is True.
 
     Returns
     -------
-    nd.ndarray
-        the converted image with ubyte dtype
+    numpy.ndarray
+        the converted image with ubyte dtype, with the same shape as `img`
+
+    See Also
+    --------
+    im_ubyte2float : the inverse operation
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from mt.opencv.image import im_float2ubyte
+    >>> im_float2ubyte(np.array([0.0, 0.5, 1.0]))
+    array([  0, 128, 255], dtype=uint8)
+    >>> im_float2ubyte(np.array([-1.0, 0.0, 1.0]), is_float01=False)
+    array([  0, 128, 255], dtype=uint8)
     """
     if is_float01:
         return np.round(img * 255.0).astype(np.uint8)
@@ -772,21 +1015,34 @@ def im_ubyte2float(
 
     Parameters
     ----------
-    img : nd.ndarray
+    img : numpy.ndarray
         the image to be converted
-    is_float01 : bool
+    is_float01 : bool, optional
         whether the pixel values of the float image are to be in range [0,1] (True) or range [-1,1]
-        (False)
-    rng : numpy.random.RandomState or bool or None
+        (False). Default is True.
+    rng : numpy.random.RandomState or bool or None, optional
         Whether or not to use an rng to dequantise pixel values from integer to floats. If None or
         False is provided, we do not add (0,1)-uniform noise to the pixel values. If True is
         provided, an internal 'rng' is created. Otherwise, the provided 'rng' is used to generate
-        random numbers.
+        random numbers. When dequantising, the divisor is 256 (or 128) instead of 255 (or 127.5).
 
     Returns
     -------
-    nd.ndarray
-        the converted image with float32 dtype
+    numpy.ndarray
+        the converted image with float32 dtype, with the same shape as `img`
+
+    See Also
+    --------
+    im_float2ubyte : the inverse operation
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from mt.opencv.image import im_ubyte2float
+    >>> im_ubyte2float(np.array([0, 51, 255], dtype=np.uint8))
+    array([0. , 0.2, 1. ], dtype=float32)
+    >>> im_ubyte2float(np.array([0, 255], dtype=np.uint8), is_float01=False)
+    array([-1.,  1.], dtype=float32)
     """
     if rng is True:
         rng = np.random.RandomState()

@@ -1,4 +1,16 @@
-'''Converting an RGB image into ANSI format.'''
+r'''Converting an RGB image into ANSI format.
+
+The main function is :func:`to_ansi`, which renders an image as a string of 24-bit-colour ANSI
+escape sequences that can be printed on a terminal supporting true colour.
+
+Examples
+--------
+>>> import numpy as np
+>>> from mt.opencv.ansi import to_ansi
+>>> img = np.zeros((1, 2, 3), dtype=np.uint8)
+>>> print(repr(to_ansi(img, imgres=[2, 1])))
+'\x1b[48;2;0;0;0m \x1b[0m\x1b[48;2;0;0;0m \x1b[0m\n'
+'''
 
 from colors import color
 import cv2 as cv
@@ -10,23 +22,38 @@ __all__ = ['to_ansi', 'get_screen_imgres']
 
 
 def get_pixel(col):
-    '''Converts a pixel into an ANSI letter.'''
+    '''Converts a pixel into an ANSI letter.
+
+    Parameters
+    ----------
+    col : sequence
+        the `(R, G, B)` values of the pixel, in range 0..255
+
+    Returns
+    -------
+    str
+        a white space whose background colour is the pixel colour, using ANSI encoding
+    '''
     return color(' ', bg=f'rgb({int(col[0])}, {int(col[1])}, {int(col[2])})')
 
 
 def get_screen_imgres(margin:int = 7) -> list:
     '''Gets the image resolution that fits the current screen, with some margin.
 
+    The size of the terminal is queried via :func:`mt.base.terminal.stty_imgres`, so the result
+    depends on the terminal the program runs in.
+
     Parameters
     ----------
-    margin : int
-        Only valid if imgres is None. The argument specifies the number of letters in both width and
-        height to be preserved as margin
+    margin : int, optional
+        the number of letters in both width and height to be preserved as margin. A dimension is
+        reduced by the margin only if it is more than twice the margin. Default is 7.
 
     Returns
     -------
     imgres : list
-        pair of [max_width, max_height] defining the maximum resolution that fits the current screen
+        pair of `[max_width, max_height]` defining the maximum resolution that fits the current
+        screen
     '''
 
     imgres = stty_imgres()
@@ -41,7 +68,7 @@ def get_screen_imgres(margin:int = 7) -> list:
 
 
 def to_ansi(img, imgres=None, margin=7):
-    '''Converts an RGB image into ANSI format for displaying on a terminal.
+    r'''Converts an RGB image into ANSI format for displaying on a terminal.
 
     Given an image, the function first determines the resolution to which the image
     will be resized. After resizing to the new resolution, each pixel is converted
@@ -52,18 +79,27 @@ def to_ansi(img, imgres=None, margin=7):
     Parameters
     ----------
     img : numpy.ndarray
-        an RGB uint8 image
+        an RGB uint8 image of shape `(height, width, 3)`
     imgres : list, optional
-        pair of [width, height] defining the target resolution. If not specified,
-        we estimate from the current terminal.
-    margin : int
+        pair of `[width, height]` defining the target resolution. If not specified,
+        we estimate from the current terminal, preserving the aspect ratio (taking the 2:1 shape
+        of a character cell into account).
+    margin : int, optional
         Only valid if imgres is None. The argument specifies the number of letters in both width and
-        height to be preserved as margin
+        height to be preserved as margin. Default is 7.
 
     Returns
     -------
     str
-        a multi-line string that can be printed to a terminal
+        a multi-line string that can be printed to a terminal, with one line per image row
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from mt.opencv.ansi import to_ansi
+    >>> img = np.zeros((1, 2, 3), dtype=np.uint8)
+    >>> print(repr(to_ansi(img, imgres=[2, 1])))
+    '\x1b[48;2;0;0;0m \x1b[0m\x1b[48;2;0;0;0m \x1b[0m\n'
     '''
 
     # determine the resolution

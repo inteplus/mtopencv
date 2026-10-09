@@ -1,4 +1,4 @@
-"""Additional utitlities dealing with OpenCV for Python.
+"""Additional utilities dealing with OpenCV for Python.
 
 Instead of:
 
@@ -12,7 +12,11 @@ You do:
 
    from mt import cv
 
-It will import the OpenCV package plus the additional stuff implemented in :module:`mt.opencv`.
+It will import the OpenCV package, re-exporting every public name of :mod:`cv2` (so that
+`cv.imread`, `cv.resize`, etc. work as usual), plus the additional stuff implemented in
+:mod:`mt.opencv`, such as :class:`mt.opencv.image.Image`, :class:`mt.opencv.imgcrop.Cropping`,
+:func:`mt.opencv.warping.crop_image`, the polygon functions of :mod:`mt.opencv.polygon` and
+the image resolution helpers of :mod:`mt.opencv.imgres`.
 
 Please see `opencv`_ package for Python for more details.
 
