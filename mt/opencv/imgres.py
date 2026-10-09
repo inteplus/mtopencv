@@ -59,7 +59,7 @@ name2imgres = {
     "pal43": [768, 576],
     "pal169": [1024, 576],
     "uxga": [1600, 1200],
-    "fhd": [1920, 1280],
+    "fhd": [1920, 1080],
 }
 
 
@@ -396,7 +396,7 @@ def make_thumbnail(
 
     Only images of aspect ratio 4:3 or 16:9 are accepted. The thumbnail of a 4:3 image will be of
     resolution 'cif' (384x288) and that of a 16:9 image will be of resolution 'ws_cif' (512x288).
-    See
+    If `large` is True, they are 'pal43' (768x576) and 'pal169' (1024x576) respectively. See
     attribute `name2imgres` of the module for more details.
 
     Parameters
@@ -404,8 +404,7 @@ def make_thumbnail(
     image : numpy.ndarray
         an image of shape `(H, W, D)` where `1 <= D <= 4`
     large : bool, optional
-        intended to select a large thumbnail ('pal43' or 'pal169'), but currently it is ignored and
-        the normal thumbnail is always made. Default is False.
+        whether or not to make a large thumbnail ('pal43' or 'pal169'). Default is False.
     pixel_format : str, optional
         pixel format. To be passed as-is to :class:`mt.opencv.image.Image`. Default is 'rgb'.
     extra_meta : dict, optional
@@ -414,7 +413,8 @@ def make_thumbnail(
     Returns
     -------
     mt.opencv.image.Image
-        another image of shape `(288, 384, D)` or `(288, 512, D)` with metadata. The metadata of the
+        another image of shape `(288, 384, D)` or `(288, 512, D)` (or `(576, 768, D)` or
+        `(576, 1024, D)` if `large`) with metadata. The metadata of the
         image contains key 'src_imgres' telling the resolution of the original image, plus any
         metadata provided by the `extra_meta` dictionary.
 
@@ -432,7 +432,7 @@ def make_thumbnail(
     """
 
     imgres = shape2imgres(image.shape)
-    thumb_imgres = get_thumbnail_imgres(imgres)
+    thumb_imgres = get_thumbnail_imgres(imgres, large=large)
     img = cv2.resize(image, thumb_imgres)
     meta = extra_meta.copy()
     meta["src_imgres"] = imgres

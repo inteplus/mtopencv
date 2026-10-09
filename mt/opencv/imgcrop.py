@@ -314,14 +314,13 @@ class Cropping:
         ----------
         in_image : numpy.ndarray
             input image from which the cropping takes place, of shape `(height, width, nchannels)`
-            with
-            at most 4 channels. It should have the same resolution as the imgres of the cropping
-            (this is not checked). A 2D image of shape `(height, width)` is not supported.
+            with at most 4 channels, or of shape `(height, width)` for a single channel. It should
+            have the same resolution as the imgres of the cropping (this is not checked).
         out_image : numpy.ndarray, optional
-            output image to be cropped and resized to. If provided, it must have the same
-            resolution as the cropres of the cropping. Otherwise, one is generated with the same
-            dtype and number of channels as the input image, and with the same cropres of the
-            cropping.
+            output image to be cropped and resized to, of the same dimensionality as the input
+            image. If provided, it must have the same resolution as the cropres of the cropping.
+            Otherwise, one is generated with the same dtype and number of channels as the input
+            image, and with the same cropres of the cropping.
         inter_mode : {'nearest', 'bilinear'}, optional
             interpolation mode. 'nearest' means nearest neighbour interpolation. 'bilinear' means
             bilinear interpolation. Default is 'bilinear'.
@@ -333,7 +332,7 @@ class Cropping:
         -------
         numpy.ndarray
             the crop, which is `out_image` if provided, with shape `(cropres[1], cropres[0],
-            nchannels)`
+            nchannels)` (or `(cropres[1], cropres[0])` for a 2D input image)
 
         Raises
         ------
@@ -359,6 +358,15 @@ class Cropping:
         array([[ 0,  2],
                [ 8, 10]], dtype=uint8)
         """
+
+        if in_image.ndim == 2:  # single-channel image of shape (height, width)
+            out2d = self.apply(
+                in_image[:, :, None],
+                out_image=None if out_image is None else out_image[:, :, None],
+                inter_mode=inter_mode,
+                border_mode=border_mode,
+            )
+            return out2d[:, :, 0] if out_image is None else out_image
 
         if in_image.shape[2] > 4:
             raise NotImplementedError(
