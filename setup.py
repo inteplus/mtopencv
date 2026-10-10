@@ -20,8 +20,8 @@ setup(
         # 'opencv-python', # let them install opencv-python or opencv-python-headless or whatever
         "ansicolors",  # for displaying images on the terminal
         "shapely",  # for polygon manipulations
-        "mtbase>=4.33.34",  # just updating
-        "mtgeo>=1.1.17",  # just updating
+        "mtbase>=4.34.2",  # just updating
+        "mtgeo>=1.1.19",  # just updating
     ],
     setup_requires=["setuptools-git-versioning>=3,<4"],
     setuptools_git_versioning={
